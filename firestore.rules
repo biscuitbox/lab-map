@@ -1,0 +1,95 @@
+rules_version = '2';
+
+// 과학실 실험장 지도 — Firestore 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 이 내용을 그대로 붙여 넣고 [게시]하세요.
+// ⚠ firstAdmins()의 이메일을 js/config.js의 ADMIN_EMAILS와 똑같이 바꿔 주세요. (소문자로)
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 처음부터 관리자인 계정
+    function firstAdmins() {
+      return ['biscuittong@gmail.com'];
+    }
+
+    // 구글 계정으로 로그인했는가
+    function signedIn() {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'google.com'
+        && request.auth.token.email_verified == true;
+    }
+    function myEmail() { return request.auth.token.email.lower(); }
+    function memberPath() { return /databases/$(database)/documents/members/$(request.auth.uid); }
+
+    // 승인된 사용자인가 (처음 관리자이거나 members 문서가 있음)
+    function isMember() {
+      return signedIn() && (myEmail() in firstAdmins() || exists(memberPath()));
+    }
+    // 관리자인가
+    function isAdmin() {
+      return signedIn() && (myEmail() in firstAdmins()
+        || (exists(memberPath()) && get(memberPath()).data.role == 'admin'));
+    }
+
+    // 승인된 사용자 목록
+    match /members/{uid} {
+      allow read: if isMember() || (signedIn() && request.auth.uid == uid);
+      // 관리자가 승인하거나, 미리 승인된 이메일의 본인이 처음 로그인할 때 만듦
+      allow create: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.role == 'member'
+            && request.resource.data.email == myEmail()
+            && exists(/databases/$(database)/documents/invites/$(myEmail())));
+      // 본인은 이름·사진만 고칠 수 있고 역할은 못 바꿈
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.email == resource.data.email);
+      allow delete: if isAdmin();
+    }
+
+    // 이메일로 미리 승인
+    match /invites/{em} {
+      allow read: if isAdmin() || (signedIn() && em == myEmail());
+      allow write: if isAdmin();
+    }
+
+    // 사용 요청 (본인만 만들고, 관리자가 처리)
+    match /requests/{uid} {
+      allow read, delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid;
+    }
+
+    // 과학실 데이터: 승인된 사용자만 읽고 씀
+    match /meta/{docId}     { allow read, write: if isMember(); }
+    match /cabinets/{docId} { allow read, write: if isMember(); }
+    match /loans/{docId}    { allow read, write: if isMember(); }
+
+    // 물품 사진 (작게 줄인 JPEG 문자열, 문서 하나에 사진 하나)
+    match /photos/{itemId} {
+      allow read, delete: if isMember();
+      allow create, update: if isMember()
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 300000;
+    }
+
+    // 휴지통: 승인된 사용자 누구나 지우고 되살림
+    match /trash/{docId} { allow read, write: if isMember(); }
+
+    // 백업: 승인된 사용자는 만들고 읽기만, 백업 삭제는 관리자만
+    match /backups/{docId} {
+      allow read, create, update: if isMember();
+      allow delete: if isAdmin();
+    }
+    match /backupIndex/{docId} {
+      allow read, create, update: if isMember();
+      allow delete: if isAdmin();
+    }
+
+    // 사용 기록: 모두 읽되, 자기 이름의 월별 문서에만 씀
+    match /logs/{docId} {
+      allow read: if isMember();
+      allow write: if isMember() && docId.matches('^[0-9]{4}-[0-9]{2}__' + request.auth.uid + '$');
+    }
+  }
+}

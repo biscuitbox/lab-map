@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>사용설명서 · 특별실 물품 지도</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M13 4h8M14 4v9L6 27a2.5 2.5 0 0 0 2.2 3.7h17.6A2.5 2.5 0 0 0 28 27l-8-14V4' fill='none' stroke='%231c6a5e' stroke-width='2.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* 설명서 레이아웃: 왼쪽 목차(넓은 화면에서 고정) + 오른쪽 본문 */
+.doc{display:grid;grid-template-columns:220px minmax(0,1fr);gap:36px;align-items:start}
+@media (max-width:860px){.doc{grid-template-columns:minmax(0,1fr)}.toc{position:static!important}}
+.toc{position:sticky;top:calc(16px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:2px;font-size:13.5px;border-left:2px solid var(--line);padding-left:12px}
+.toc a{color:var(--muted);text-decoration:none;padding:3px 0}
+.toc a:hover{color:var(--accent)}
+.toc b{font-size:11.5px;letter-spacing:.06em;color:var(--muted);margin-bottom:6px}
+article{max-width:46rem;display:flex;flex-direction:column;gap:44px}
+article section{scroll-margin-top:16px;display:flex;flex-direction:column;gap:12px}
+article h2{margin:0;font-size:20px;letter-spacing:-.01em;text-wrap:balance;display:flex;align-items:baseline;gap:10px}
+article h2 .no{font-family:var(--f-mono);font-size:13px;color:var(--accent);font-weight:500}
+article h3{margin:10px 0 0;font-size:15.5px}
+article p,article li{line-height:1.75;margin:0}
+article ol,article ul{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.lead{font-size:16px;color:var(--muted);max-width:40rem;line-height:1.7}
+.note{padding:12px 14px;border-radius:var(--r);background:var(--accent-soft);font-size:13.5px;line-height:1.7}
+.warnnote{padding:12px 14px;border-radius:var(--r);background:var(--warn-soft);font-size:13.5px;line-height:1.7}
+kbd,.ui{font-family:var(--f-body);font-size:12.5px;font-weight:500;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:var(--surface);white-space:nowrap}
+.tabtable{width:100%;min-width:0;font-size:13.5px}
+.tabtable td:first-child{white-space:nowrap;font-weight:500}
+.figure{display:flex;flex-wrap:wrap;gap:20px;align-items:center;padding:18px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.figure .cap{flex:1 1 220px;font-size:13px;color:var(--muted);line-height:1.7}
+.demo{position:relative;flex:none}
+.legendrow{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:13px}
+.legendrow span{display:inline-flex;align-items:center;gap:6px}
+.steps{counter-reset:s;list-style:none;padding-left:0!important}
+.steps li{counter-increment:s;position:relative;padding-left:34px}
+.steps li::before{content:counter(s);position:absolute;left:0;top:2px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:12px;font-weight:700;display:grid;place-items:center;font-family:var(--f-mono)}
+details{border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:10px 14px}
+details+details{margin-top:8px}
+summary{cursor:pointer;font-weight:500}
+details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
+.topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+@media print{.toc,.noprint{display:none!important}.doc{display:block}article{max-width:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true"><path d="M13 4h8M14 4v9L6 27a2.5 2.5 0 0 0 2.2 3.7h17.6A2.5 2.5 0 0 0 28 27l-8-14V4" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9.5 22h15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="11" y="24" width="4" height="4" rx="1" fill="currentColor" opacity=".55"/><rect x="16" y="24" width="7" height="4" rx="1" fill="currentColor"/></svg>
+      <div><h1>사용설명서</h1><span class="muted" style="font-size:13px">특별실 물품 지도</span></div>
+    </div>
+    <div class="sizes noprint"><a class="btn ghost" href="index.html">← 지도로 돌아가기</a><button class="btn ghost" type="button" onclick="window.print()">설명서 인쇄</button></div>
+  </header>
+
+  <div class="doc">
+    <nav class="toc noprint" aria-label="목차">
+      <b>목차</b>
+      <a href="#about">이 사이트로 할 수 있는 일</a>
+      <a href="#start">처음 들어가기</a>
+      <a href="#screen">화면 둘러보기</a>
+      <a href="#room">배치도</a>
+      <a href="#build">보관장 조립하기</a>
+      <a href="#items">물품 관리</a>
+      <a href="#find">찾기와 재고 목록</a>
+      <a href="#loans">대여 기록</a>
+      <a href="#stats">사용 통계</a>
+      <a href="#qr">QR 라벨</a>
+      <a href="#undo">실수했을 때</a>
+      <a href="#admin">관리자가 할 일</a>
+      <a href="#faq">자주 묻는 질문</a>
+    </nav>
+
+    <article>
+      <section id="about">
+        <h2>이 사이트로 할 수 있는 일</h2>
+        <p class="lead">특별실 보관장을 칸 블록으로 똑같이 만들어 두고, 어느 칸에 무엇이 몇 개 있는지 함께 관리하는 사이트예요. 여러 선생님이 같은 내용을 실시간으로 보고 고칠 수 있어요.</p>
+        <div class="figure">
+          <div class="demo cabinet" aria-hidden="true"><div class="plate">약품장 A</div>
+            <div class="cab-inner" style="width:240px;height:180px;background-size:100% 60px">
+              <div class="block" style="left:3px;top:3px;width:114px;height:54px;background:#d94f5c;color:#fff"><div class="bl">산</div><div class="bm">3종</div></div>
+              <div class="block" style="left:123px;top:3px;width:114px;height:54px;background:#3b7dd8;color:#fff"><div class="bl">염기</div><div class="bm">3종</div></div>
+              <div class="block" style="left:3px;top:63px;width:54px;height:54px;background:#e9b10a;color:#141a18"><div class="bl">산화제</div></div>
+              <div class="block" style="left:63px;top:63px;width:174px;height:114px;background:#17a2a0;color:#fff"><div class="bl">지시약</div><div class="bm">4종</div><div class="bn">페놀프탈레인 용액</div><div class="bn">BTB 용액</div></div>
+              <button class="slot" style="left:4px;top:124px;width:52px;height:52px" tabindex="-1">＋</button>
+            </div></div>
+          <p class="cap">실험장(보관장)은 칸으로 나뉜 격자예요. 칸에 <b>블록</b>을 붙이고, 블록마다 물품을 넣어요. 블록 색은 분류(산, 염기, 유리기구…)를 나타내고, 큰 칸은 블록을 여러 칸 크기로 늘려서 표현해요.</p>
+        </div>
+        <ul>
+          <li><b>어디 있지?</b> — 물품 이름으로 찾으면 배치도에서 그 보관장과 칸이 밝게 표시돼요.</li>
+          <li><b>얼마나 남았지?</b> — 수량, 최소 수량, 유효기한을 적어 두면 부족하거나 기한이 다가오는 물품을 알려 줘요.</li>
+          <li><b>누가 빌려 갔지?</b> — 대여와 반납을 기록하고, 연체도 표시해요.</li>
+          <li><b>내년에 뭘 사지?</b> — 한 해 동안 쓴 양으로 구입 추천 목록을 만들어요.</li>
+        </ul>
+        <p class="note">이 설명서는 과학실 기준으로 ‘실험장’, ‘실험대’라고 불러요. 관리자가 다른 특별실(음악실, 미술실 등)로 설정했다면 화면에는 ‘악기장’처럼 설정한 이름으로 보여요.</p>
+      </section>
+
+      <section id="start">
+        <h2><span class="no">01</span>처음 들어가기</h2>
+        <ol class="steps">
+          <li>사이트 주소를 열고 <span class="ui">Google로 로그인</span>을 눌러요. 학교에서 쓰는 구글 계정이면 돼요.</li>
+          <li>처음이면 ‘사용 승인이 필요해요’ 화면이 나와요. <span class="ui">사용 요청 보내기</span>를 눌러요.</li>
+          <li>관리자가 승인하면 화면이 저절로 열려요. 새로고침하지 않아도 돼요.</li>
+        </ol>
+        <p>관리자가 내 이메일을 미리 등록해 두었다면 요청 없이 바로 열려요.</p>
+        <p class="note">실험장에 붙은 <b>QR 라벨</b>을 휴대폰으로 찍어도 들어올 수 있어요. 로그인하면 그 칸이 바로 열려요.</p>
+      </section>
+
+      <section id="screen">
+        <h2><span class="no">02</span>화면 둘러보기</h2>
+        <p>맨 위에는 사이트 제목, <b>물품 찾기</b> 칸, 내 계정이 있어요. 그 아래 숫자 칩은 지금 상태를 요약해요. <span class="ui">재고 부족 4</span>처럼 칩을 누르면 해당 물품 목록으로 바로 가요.</p>
+        <div class="tablewrap"><table class="tabtable"><thead><tr><th>탭</th><th>여기서 하는 일</th></tr></thead><tbody>
+          <tr><td>배치도</td><td>특별실 전체 모습. 실험장과 실험대를 옮기고, 잠그고, 찾은 물품의 위치를 봐요.</td></tr>
+          <tr><td>실험장 조립</td><td>실험장 하나를 크게 보고 블록을 붙이거나 물품을 넣고 고쳐요.</td></tr>
+          <tr><td>재고 목록</td><td>모든 물품을 표로 보고, 부족·기한·대여 중으로 걸러 봐요. CSV로 내려받아요.</td></tr>
+          <tr><td>대여 기록</td><td>빌려준 물품을 적고 반납 처리해요.</td></tr>
+          <tr><td>사용 통계</td><td>한 해 동안 많이 쓴 물품과 내년 구입 추천을 봐요.</td></tr>
+          <tr><td>QR 라벨</td><td>칸마다 붙일 QR 라벨을 인쇄해요.</td></tr>
+          <tr><td>백업·휴지통</td><td>지운 것을 되살리고, 지난 상태와 비교해 되돌려요.</td></tr>
+          <tr><td>설정·사용자</td><td>사용자 승인, 이름과 특별실 종류, 분류 색, 바닥 크기를 바꿔요.</td></tr>
+        </tbody></table></div>
+      </section>
+
+      <section id="room">
+        <h2><span class="no">03</span>배치도</h2>
+        <ul>
+          <li><b>옮기기:</b> 실험장이나 실험대를 끌어서 옮겨요. 격자 1칸은 약 50 cm예요.</li>
+          <li><b>열기:</b> 실험장을 한 번 누르면 ‘실험장 조립’ 화면이 열려요.</li>
+          <li><b>더하기:</b> <span class="ui">＋ 실험장</span> <span class="ui">＋ 실험대</span> <span class="ui">＋ 교탁</span> <span class="ui">＋ 개수대</span>로 새로 놓아요. 실험대·교탁을 누르면 이름과 크기를 고칠 수 있어요.</li>
+          <li><b>블록 내용 보기:</b> 실험장 안 블록에 이름(예: 비커)이 보여요. 마우스를 올리면 들어 있는 물품 목록이 떠요.</li>
+          <li><b>잠그기:</b> <span class="ui">배치 전체 잠그기</span>를 켜면 아무도 위치를 옮길 수 없어요. 실험장 하나만 잠그려면 조립 화면의 <span class="ui">배치도 위치 잠그기</span>를 눌러요. 잠긴 것에는 자물쇠 표시가 붙어요.</li>
+        </ul>
+      </section>
+
+      <section id="build">
+        <h2><span class="no">04</span>실험장 조립하기</h2>
+        <ol class="steps">
+          <li>위쪽 이름표에서 실험장을 골라요. 처음이면 <span class="ui">＋ 새 실험장</span>을 눌러요.</li>
+          <li><span class="ui">가로 칸</span> <span class="ui">세로 칸</span>으로 실제 실험장의 칸 수를 맞춰요.</li>
+          <li>오른쪽 <b>새 블록의 분류</b>에서 색(분류)을 고르고, 점선 <span class="ui">＋</span> 칸을 누르면 블록이 붙어요.</li>
+          <li>블록을 누르면 오른쪽(휴대폰은 아래)에 편집 칸이 열려요. 이름, 분류 색, 크기(가로·세로 칸 수)를 바꿔요.</li>
+          <li>블록을 끌어서 다른 빈 칸으로 옮길 수 있어요. 다른 블록과 겹치면 빨간 점선이 보이고 제자리로 돌아가요.</li>
+        </ol>
+        <h3>보관 경고</h3>
+        <p>산과 염기, 산화제와 인화성 물질처럼 함께 두면 위험한 것이 같은 블록에 있거나 맞닿아 있으면 블록에 빨간 테두리와 <span class="ui">보관 주의</span>가 붙고, 실험장 아래에 이유가 나와요. 분류의 ‘위험 성질’과 물품의 GHS 표시(인화성·산화성·급성 독성)로 판단해요.</p>
+        <p class="warnnote">보관 경고는 기본적인 조합만 살펴보는 도움 기능이에요. 실제 보관 기준은 학교 과학실 안전 지침과 각 약품의 MSDS를 따라 주세요.</p>
+      </section>
+
+      <section id="items">
+        <h2><span class="no">05</span>물품 관리</h2>
+        <ul>
+          <li><b>추가:</b> 블록 편집 칸 아래 이름 칸에 적고 <kbd>Enter</kbd> 또는 <span class="ui">추가</span>.</li>
+          <li><b>수량:</b> <span class="ui">−</span> <span class="ui">＋</span>로 바꾸거나 숫자를 직접 고쳐요. 줄인 양은 ‘사용량’, 늘린 양은 ‘보충량’으로 통계에 남아요.</li>
+          <li><b>최소 수량:</b> 이보다 적어지면 ‘부족’으로 표시돼요.</li>
+          <li><b>유효기한:</b> 60일 안으로 남으면 ‘기한 임박’, 지나면 ‘만료’로 표시돼요.</li>
+          <li><b>분류:</b> 보통은 블록 분류를 따르고, 한 블록에 섞여 있으면 물품마다 따로 고를 수 있어요.</li>
+          <li><b>안전 정보:</b> <span class="ui">안전 정보</span>를 누르면 CAS 번호, MSDS 주소, GHS 그림문자를 넣을 수 있어요. 안전보건공단 MSDS 검색 링크도 있어요.</li>
+          <li><b>사진:</b> <span class="ui">사진 넣기</span>를 누르고 사진을 고르거나 휴대폰으로 찍어요. 자동으로 작게 줄여서 저장돼요. 작은 사진을 누르면 크게 보이고, 거기서 바꾸거나 지울 수 있어요.</li>
+          <li><b>지우기:</b> 물품 옆 <span class="ui">×</span>. 화면 아래 <span class="ui">되돌리기</span>로 바로 되살릴 수 있어요.</li>
+        </ul>
+        <div class="legendrow"><span><span class="pill low">부족</span>최소 수량보다 적음</span><span><span class="pill soon">기한 임박</span>60일 이내</span><span><span class="pill expired">만료</span>기한 지남</span><span><span class="pill loan">대여 중</span>빌려 간 수량</span></div>
+      </section>
+
+      <section id="find">
+        <h2><span class="no">06</span>찾기와 재고 목록</h2>
+        <p>맨 위 <b>물품 찾기</b> 칸에 ‘염산’, ‘비커’처럼 적으면 배치도에서는 해당 실험장이 테두리로, 해당 블록만 진하게 보여요. 실험장 이름 옆 숫자는 찾은 물품 수예요. 물품 이름, 블록 이름, 분류 이름, CAS 번호로 찾을 수 있어요.</p>
+        <p><b>재고 목록</b>에서는 모든 물품을 한 표로 보고 <span class="ui">재고 부족</span> <span class="ui">유효기한 임박·만료</span> <span class="ui">위험 물질</span> <span class="ui">대여 중</span>으로 걸러 봐요. 위치를 누르면 그 블록이 열려요. <span class="ui">재고 목록 CSV 내려받기</span>로 엑셀 파일을 받을 수 있어요.</p>
+      </section>
+
+      <section id="loans">
+        <h2><span class="no">07</span>대여 기록</h2>
+        <ol class="steps">
+          <li><b>대여 기록</b> 탭에서 물품, 수량, 빌려간 곳(예: 2학년 3반 4모둠), 반납 예정일을 적고 <span class="ui">대여 기록</span>.</li>
+          <li>물품 편집 칸의 <span class="ui">대여</span>를 누르면 그 물품이 미리 골라진 채로 열려요.</li>
+          <li>돌려받으면 <span class="ui">반납</span>을 눌러요. 반납 예정일이 지나면 빨갛게 ‘연체’로 표시돼요.</li>
+        </ol>
+        <p>대여해도 보유 수량은 줄지 않아요. 대신 ‘대여 중’ 표시가 붙어서 지금 실험장에 몇 개 있는지 알 수 있어요.</p>
+      </section>
+
+      <section id="stats">
+        <h2><span class="no">08</span>사용 통계와 구입 추천</h2>
+        <p>수량을 바꿀 때마다 자동으로 기록돼요. 연도를 고르면 많이 쓴 물품 순위와 <b>내년 구입 추천</b>이 나와요.</p>
+        <p class="note">구입 추천 = 한 해 사용량 + 최소 수량 − 지금 수량. 한 해 쓴 만큼 다시 쓴다고 보고, 최소 수량을 지키려면 더 사야 하는 양이에요. <span class="ui">구입 목록 CSV 내려받기</span>로 품의 자료를 만들 때 쓰세요.</p>
+        <p>물품을 실제로 쓴 뒤 수량을 줄여야 통계가 정확해요. 새로 산 물품은 ＋로 늘려 주세요.</p>
+      </section>
+
+      <section id="qr">
+        <h2><span class="no">09</span>QR 라벨</h2>
+        <ol class="steps">
+          <li><b>QR 라벨</b> 탭에서 전체 또는 실험장 하나를 골라요.</li>
+          <li><span class="ui">라벨 인쇄</span>를 누르면 새 창에서 A4 3열 라벨이 인쇄돼요. 팝업이 막히면 파일로 내려받아져요.</li>
+          <li>오려서 실험장 각 칸에 붙여요. 라벨에는 실험장 이름, 블록 이름, 들어 있는 물품, GHS 표시가 함께 인쇄돼요.</li>
+        </ol>
+        <p>휴대폰 카메라로 찍으면 그 칸의 물품 목록이 열려요. 승인된 선생님 계정으로 로그인해야 내용이 보여요. 블록 편집 칸 아래에서도 그 칸의 QR을 볼 수 있어요.</p>
+      </section>
+
+      <section id="undo">
+        <h2><span class="no">10</span>실수했을 때</h2>
+        <h3>방금 지웠다면</h3>
+        <p>지운 직후 화면 아래에 8초 동안 <span class="ui">되돌리기</span>가 떠요. 누르면 원래 자리로 돌아가요.</p>
+        <h3>며칠 전에 지웠다면 — 휴지통</h3>
+        <p><b>백업·휴지통</b> 탭의 휴지통에 30일 동안 남아 있어요. 누가 언제 지웠는지도 보여요. <span class="ui">되살리기</span>를 누르면 원래 칸으로, 그 칸이 차 있으면 빈 칸으로 들어가요.</p>
+        <h3>수량을 잘못 바꿨거나 무엇이 바뀌었는지 모르겠다면 — 백업 비교</h3>
+        <ol class="steps">
+          <li>매일 그날 처음 접속할 때 전체 상태가 자동으로 백업돼요(30일 보관). <span class="ui">지금 백업하기</span>로 직접 백업할 수도 있어요.</li>
+          <li>백업 목록에서 문제가 생기기 전 날짜의 <span class="ui">비교</span>를 눌러요.</li>
+          <li>그때는 있었는데 지금 없는 물품, 수량이 달라진 물품이 나와요. 필요한 것만 <span class="ui">되살리기</span>나 <span class="ui">그때 수량으로</span>를 눌러요. 그 뒤에 새로 넣은 물품은 그대로 남아요.</li>
+        </ol>
+        <p class="warnnote">관리자는 <span class="ui">전체를 이 백업으로 되돌리기</span>도 할 수 있어요. 되돌리기 직전 상태가 자동으로 한 번 더 백업되니, 잘못 되돌려도 다시 돌아올 수 있어요.</p>
+      </section>
+
+      <section id="admin">
+        <h2><span class="no">11</span>관리자가 할 일</h2>
+        <h3>선생님 승인하기</h3>
+        <ul>
+          <li><b>요청 승인:</b> 설정·사용자 → 사용 요청에서 <span class="ui">승인</span>.</li>
+          <li><b>미리 등록:</b> 이메일로 미리 승인 칸에 구글 이메일을 적고 <span class="ui">등록</span>. 그 계정은 처음 로그인할 때 바로 열려요.</li>
+          <li><b>역할 바꾸기:</b> 승인된 사용자 옆에서 ‘관리자’로 바꾸면 그 사람도 승인과 백업 삭제를 할 수 있어요.</li>
+          <li><b>승인 취소:</b> 전근 가신 선생님은 <span class="ui">승인 취소</span>를 두 번 눌러요. 바로 내용을 볼 수 없게 돼요.</li>
+        </ul>
+        <h3>이름과 특별실 종류</h3>
+        <p>맨 위 큰 제목을 눌러 바로 바꿀 수 있어요. 설정·사용자 → <b>이름과 특별실 종류</b>에서 과학실·음악실·미술실·기술실·가사실·체육 창고 중 하나를 고르면 화면의 이름이 한 번에 바뀌고, 칸마다 직접 고칠 수도 있어요. 과학실이 아니면 <b>약품 안전 기능</b>을 꺼 두세요.</p>
+        <h3>분류 색, 바닥 크기</h3>
+        <p>분류 색을 바꾸면 모든 블록 색이 함께 바뀌어요. 바닥 크기는 격자 칸 수로 맞춰요(1칸 ≈ 50 cm).</p>
+        <h3>학기마다 한 번</h3>
+        <p><b>백업·휴지통 → 지금 상태를 파일로 내려받기</b>로 학교 컴퓨터에 백업 파일을 보관해 두세요.</p>
+      </section>
+
+      <section id="faq">
+        <h2><span class="no">12</span>자주 묻는 질문</h2>
+        <details><summary>다른 선생님이 고친 내용이 바로 보이나요?</summary><p>네. 같은 화면을 보고 있으면 몇 초 안에 저절로 바뀌어요. 입력칸에 글을 쓰는 중에는 다 쓰고 칸을 벗어날 때 바뀌어요.</p></details>
+        <details><summary>인터넷이 잠깐 끊기면 고친 내용이 사라지나요?</summary><p>아니요. 이 브라우저에 잠시 보관했다가 연결되면 자동으로 저장돼요. 다만 창을 닫기 전에 연결이 돌아왔는지 확인해 주세요.</p></details>
+        <details><summary>두 사람이 같은 칸을 동시에 고치면요?</summary><p>마지막으로 저장한 내용이 남아요. 같은 실험장을 동시에 크게 고칠 때는 서로 말을 맞춰 주세요. 혹시 겹쳐서 사라진 것이 있으면 백업 비교로 되살릴 수 있어요.</p></details>
+        <details><summary>사진이 흐려 보여요.</summary><p>무료로 쓰기 위해 긴 변 640픽셀 정도로 줄여서 저장해요. 물품을 알아보기에는 충분하지만 라벨 글씨까지 읽기는 어려울 수 있어요. 글씨는 물품 이름이나 CAS 번호 칸에 적어 주세요.</p></details>
+        <details><summary>사진도 백업되나요?</summary><p>백업 파일에는 사진이 들어가지 않아요. 휴지통에서 되살리면 사진도 함께 돌아오지만, 휴지통에서 영구 삭제하면 사진도 지워져요.</p></details>
+        <details><summary>휴대폰에서도 쓸 수 있나요?</summary><p>네. 블록 편집 칸은 실험장 아래에 열려요. 배치도는 옆으로 밀어서 볼 수 있어요.</p></details>
+        <details><summary>‘사용 요청’을 보냈는데 계속 기다리라고 나와요.</summary><p>관리자가 아직 승인하지 않았어요. 관리자 선생님께 알려 주세요. 다른 구글 계정으로 로그인했는지도 확인해 보세요(화면 오른쪽 위에 지금 계정이 보여요).</p></details>
+        <details><summary>실수로 실험장을 통째로 지웠어요.</summary><p>휴지통에 실험장째로 들어 있어요. <b>되살리기</b>를 누르면 블록과 물품까지 모두 돌아와요.</p></details>
+      </section>
+    </article>
+  </div>
+</div>
+</body>
+</html>

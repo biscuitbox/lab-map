@@ -1,0 +1,928 @@
+{
+ "version": 2,
+ "meta": {
+  "roomName": "제1과학실",
+  "room": {
+   "w": 24,
+   "h": 15
+  },
+  "categories": [
+   {
+    "id": "c_acid",
+    "name": "산",
+    "color": "#d94f5c",
+    "hazard": "acid"
+   },
+   {
+    "id": "c_base",
+    "name": "염기",
+    "color": "#3b7dd8",
+    "hazard": "base"
+   },
+   {
+    "id": "c_ox",
+    "name": "산화제",
+    "color": "#e9b10a",
+    "hazard": "oxidizer"
+   },
+   {
+    "id": "c_flam",
+    "name": "인화성",
+    "color": "#ef7d2d",
+    "hazard": "flammable"
+   },
+   {
+    "id": "c_tox",
+    "name": "유독성",
+    "color": "#8e5bd9",
+    "hazard": "toxic"
+   },
+   {
+    "id": "c_reag",
+    "name": "지시약·일반 시약",
+    "color": "#17a2a0",
+    "hazard": ""
+   },
+   {
+    "id": "c_glass",
+    "name": "유리기구",
+    "color": "#8ecae6",
+    "hazard": ""
+   },
+   {
+    "id": "c_meas",
+    "name": "측정기구",
+    "color": "#6b7a8f",
+    "hazard": ""
+   },
+   {
+    "id": "c_elec",
+    "name": "전기·전자",
+    "color": "#2e9e5b",
+    "hazard": ""
+   },
+   {
+    "id": "c_cons",
+    "name": "소모품",
+    "color": "#b08a62",
+    "hazard": ""
+   },
+   {
+    "id": "c_safe",
+    "name": "안전장비",
+    "color": "#e86aa8",
+    "hazard": ""
+   }
+  ],
+  "layoutLocked": false,
+  "furniture": [
+   {
+    "id": "fu060",
+    "type": "sink",
+    "label": "개수대",
+    "x": 20.5,
+    "y": 0.5,
+    "w": 3,
+    "h": 3,
+    "locked": false
+   },
+   {
+    "id": "fu061",
+    "type": "bench",
+    "label": "1모둠",
+    "x": 2.5,
+    "y": 7.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu062",
+    "type": "bench",
+    "label": "2모둠",
+    "x": 9.5,
+    "y": 7.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu063",
+    "type": "bench",
+    "label": "3모둠",
+    "x": 16.5,
+    "y": 7.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu064",
+    "type": "bench",
+    "label": "4모둠",
+    "x": 2.5,
+    "y": 10.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu065",
+    "type": "bench",
+    "label": "5모둠",
+    "x": 9.5,
+    "y": 10.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu066",
+    "type": "bench",
+    "label": "6모둠",
+    "x": 16.5,
+    "y": 10.5,
+    "w": 5,
+    "h": 2,
+    "locked": false
+   },
+   {
+    "id": "fu067",
+    "type": "desk",
+    "label": "교탁",
+    "x": 9.5,
+    "y": 13,
+    "w": 5,
+    "h": 1.5,
+    "locked": false
+   }
+  ]
+ },
+ "cabinets": [
+  {
+   "id": "cabA",
+   "name": "약품장 A",
+   "cols": 4,
+   "rows": 4,
+   "x": 0.5,
+   "y": 0.5,
+   "locked": false,
+   "order": 1,
+   "blocks": [
+    {
+     "id": "bk004",
+     "c": 0,
+     "r": 0,
+     "w": 2,
+     "h": 1,
+     "label": "산",
+     "cat": "c_acid",
+     "items": [
+      {
+       "id": "it001",
+       "name": "염산 1 M (500 mL)",
+       "qty": 3,
+       "unit": "병",
+       "min": 2,
+       "expiry": "2027-03-31",
+       "cat": "",
+       "cas": "7647-01-0",
+       "msds": "",
+       "ghs": [
+        "GHS05",
+        "GHS07"
+       ]
+      },
+      {
+       "id": "it002",
+       "name": "황산 0.5 M (500 mL)",
+       "qty": 1,
+       "unit": "병",
+       "min": 1,
+       "expiry": "2026-11-20",
+       "cat": "",
+       "cas": "7664-93-9",
+       "msds": "",
+       "ghs": [
+        "GHS05"
+       ]
+      },
+      {
+       "id": "it003",
+       "name": "아세트산 1 M (500 mL)",
+       "qty": 2,
+       "unit": "병",
+       "min": 1,
+       "expiry": "2027-06-30",
+       "cat": "",
+       "cas": "64-19-7",
+       "msds": "",
+       "ghs": [
+        "GHS07"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "bk008",
+     "c": 2,
+     "r": 0,
+     "w": 2,
+     "h": 1,
+     "label": "염기",
+     "cat": "c_base",
+     "items": [
+      {
+       "id": "it005",
+       "name": "수산화나트륨 (고체 500 g)",
+       "qty": 1,
+       "unit": "통",
+       "min": 2,
+       "expiry": "",
+       "cat": "",
+       "cas": "1310-73-2",
+       "msds": "",
+       "ghs": [
+        "GHS05"
+       ]
+      },
+      {
+       "id": "it006",
+       "name": "암모니아수 (500 mL)",
+       "qty": 1,
+       "unit": "병",
+       "min": 1,
+       "expiry": "2026-09-30",
+       "cat": "",
+       "cas": "1336-21-6",
+       "msds": "",
+       "ghs": [
+        "GHS05",
+        "GHS07",
+        "GHS09"
+       ]
+      },
+      {
+       "id": "it007",
+       "name": "수산화칼슘 (고체)",
+       "qty": 2,
+       "unit": "통",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "1305-62-0",
+       "msds": "",
+       "ghs": [
+        "GHS05",
+        "GHS07"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "bk011",
+     "c": 0,
+     "r": 1,
+     "w": 1,
+     "h": 1,
+     "label": "산화제",
+     "cat": "c_ox",
+     "items": [
+      {
+       "id": "it009",
+       "name": "과산화수소수 3%",
+       "qty": 4,
+       "unit": "병",
+       "min": 2,
+       "expiry": "2027-01-31",
+       "cat": "",
+       "cas": "7722-84-1",
+       "msds": "",
+       "ghs": [
+        "GHS07"
+       ]
+      },
+      {
+       "id": "it010",
+       "name": "과망가니즈산칼륨",
+       "qty": 1,
+       "unit": "통",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "7722-64-7",
+       "msds": "",
+       "ghs": [
+        "GHS03",
+        "GHS07",
+        "GHS08",
+        "GHS09"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "bk014",
+     "c": 1,
+     "r": 1,
+     "w": 1,
+     "h": 1,
+     "label": "인화성",
+     "cat": "c_flam",
+     "items": [
+      {
+       "id": "it012",
+       "name": "에탄올 95% (1 L)",
+       "qty": 2,
+       "unit": "병",
+       "min": 2,
+       "expiry": "2027-12-31",
+       "cat": "",
+       "cas": "64-17-5",
+       "msds": "",
+       "ghs": [
+        "GHS02",
+        "GHS07"
+       ]
+      },
+      {
+       "id": "it013",
+       "name": "알코올램프 연료",
+       "qty": 1,
+       "unit": "병",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": [
+        "GHS02"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "bk019",
+     "c": 2,
+     "r": 1,
+     "w": 2,
+     "h": 2,
+     "label": "지시약",
+     "cat": "c_reag",
+     "items": [
+      {
+       "id": "it015",
+       "name": "페놀프탈레인 용액",
+       "qty": 3,
+       "unit": "병",
+       "min": 2,
+       "expiry": "2027-05-31",
+       "cat": "",
+       "cas": "77-09-8",
+       "msds": "",
+       "ghs": [
+        "GHS02",
+        "GHS08"
+       ]
+      },
+      {
+       "id": "it016",
+       "name": "BTB 용액",
+       "qty": 2,
+       "unit": "병",
+       "min": 2,
+       "expiry": "2026-12-15",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it017",
+       "name": "아이오딘-아이오딘화칼륨 용액",
+       "qty": 2,
+       "unit": "병",
+       "min": 1,
+       "expiry": "2026-10-31",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it018",
+       "name": "리트머스 종이",
+       "qty": 5,
+       "unit": "묶음",
+       "min": 3,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk023",
+     "c": 0,
+     "r": 2,
+     "w": 2,
+     "h": 1,
+     "label": "염류",
+     "cat": "c_reag",
+     "items": [
+      {
+       "id": "it020",
+       "name": "황산구리(Ⅱ) 오수화물",
+       "qty": 2,
+       "unit": "통",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "7758-99-8",
+       "msds": "",
+       "ghs": [
+        "GHS07",
+        "GHS09"
+       ]
+      },
+      {
+       "id": "it021",
+       "name": "염화나트륨",
+       "qty": 3,
+       "unit": "통",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "7647-14-5",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it022",
+       "name": "탄산수소나트륨",
+       "qty": 2,
+       "unit": "통",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "144-55-8",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk025",
+     "c": 0,
+     "r": 3,
+     "w": 1,
+     "h": 1,
+     "label": "유독성",
+     "cat": "c_tox",
+     "items": [
+      {
+       "id": "it024",
+       "name": "질산은 0.1 M (100 mL)",
+       "qty": 1,
+       "unit": "병",
+       "min": 1,
+       "expiry": "2027-02-28",
+       "cat": "",
+       "cas": "7761-88-8",
+       "msds": "",
+       "ghs": [
+        "GHS03",
+        "GHS05",
+        "GHS09"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cabB",
+   "name": "유리기구장 B",
+   "cols": 3,
+   "rows": 4,
+   "x": 8,
+   "y": 0.5,
+   "locked": false,
+   "order": 2,
+   "blocks": [
+    {
+     "id": "bk029",
+     "c": 0,
+     "r": 0,
+     "w": 3,
+     "h": 1,
+     "label": "비커",
+     "cat": "c_glass",
+     "items": [
+      {
+       "id": "it026",
+       "name": "비커 100 mL",
+       "qty": 24,
+       "unit": "개",
+       "min": 20,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it027",
+       "name": "비커 250 mL",
+       "qty": 18,
+       "unit": "개",
+       "min": 12,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it028",
+       "name": "비커 500 mL",
+       "qty": 6,
+       "unit": "개",
+       "min": 4,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk032",
+     "c": 0,
+     "r": 1,
+     "w": 2,
+     "h": 1,
+     "label": "플라스크",
+     "cat": "c_glass",
+     "items": [
+      {
+       "id": "it030",
+       "name": "삼각플라스크 250 mL",
+       "qty": 12,
+       "unit": "개",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it031",
+       "name": "둥근바닥플라스크",
+       "qty": 4,
+       "unit": "개",
+       "min": 2,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk035",
+     "c": 2,
+     "r": 1,
+     "w": 1,
+     "h": 1,
+     "label": "눈금실린더",
+     "cat": "c_meas",
+     "items": [
+      {
+       "id": "it033",
+       "name": "눈금실린더 100 mL",
+       "qty": 10,
+       "unit": "개",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it034",
+       "name": "눈금실린더 10 mL",
+       "qty": 8,
+       "unit": "개",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk038",
+     "c": 0,
+     "r": 2,
+     "w": 1,
+     "h": 2,
+     "label": "시험관",
+     "cat": "c_glass",
+     "items": [
+      {
+       "id": "it036",
+       "name": "시험관",
+       "qty": 120,
+       "unit": "개",
+       "min": 100,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it037",
+       "name": "시험관대",
+       "qty": 16,
+       "unit": "개",
+       "min": 12,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk041",
+     "c": 1,
+     "r": 2,
+     "w": 2,
+     "h": 1,
+     "label": "측정",
+     "cat": "c_meas",
+     "items": [
+      {
+       "id": "it039",
+       "name": "알코올 온도계",
+       "qty": 15,
+       "unit": "개",
+       "min": 16,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it040",
+       "name": "전자저울",
+       "qty": 4,
+       "unit": "대",
+       "min": 4,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk045",
+     "c": 1,
+     "r": 3,
+     "w": 2,
+     "h": 1,
+     "label": "가열·거름",
+     "cat": "c_cons",
+     "items": [
+      {
+       "id": "it042",
+       "name": "알코올램프",
+       "qty": 10,
+       "unit": "개",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it043",
+       "name": "거름종이",
+       "qty": 3,
+       "unit": "갑",
+       "min": 2,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it044",
+       "name": "점화기",
+       "qty": 4,
+       "unit": "개",
+       "min": 2,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "cabC",
+   "name": "전기·안전장 C",
+   "cols": 3,
+   "rows": 3,
+   "x": 13.5,
+   "y": 0.5,
+   "locked": false,
+   "order": 3,
+   "blocks": [
+    {
+     "id": "bk049",
+     "c": 0,
+     "r": 0,
+     "w": 2,
+     "h": 1,
+     "label": "전기 측정",
+     "cat": "c_elec",
+     "items": [
+      {
+       "id": "it046",
+       "name": "직류 전원장치",
+       "qty": 8,
+       "unit": "대",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it047",
+       "name": "전류계",
+       "qty": 8,
+       "unit": "대",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it048",
+       "name": "전압계",
+       "qty": 6,
+       "unit": "대",
+       "min": 8,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk052",
+     "c": 2,
+     "r": 0,
+     "w": 1,
+     "h": 1,
+     "label": "전선",
+     "cat": "c_elec",
+     "items": [
+      {
+       "id": "it050",
+       "name": "집게 전선",
+       "qty": 40,
+       "unit": "개",
+       "min": 30,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it051",
+       "name": "니크롬선",
+       "qty": 2,
+       "unit": "롤",
+       "min": 1,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk056",
+     "c": 0,
+     "r": 1,
+     "w": 3,
+     "h": 1,
+     "label": "안전장비",
+     "cat": "c_safe",
+     "items": [
+      {
+       "id": "it053",
+       "name": "보안경",
+       "qty": 30,
+       "unit": "개",
+       "min": 30,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it054",
+       "name": "니트릴 장갑",
+       "qty": 2,
+       "unit": "상자",
+       "min": 3,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it055",
+       "name": "실험복",
+       "qty": 12,
+       "unit": "벌",
+       "min": 10,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    },
+    {
+     "id": "bk059",
+     "c": 0,
+     "r": 2,
+     "w": 1,
+     "h": 1,
+     "label": "소도구",
+     "cat": "c_cons",
+     "items": [
+      {
+       "id": "it057",
+       "name": "스포이트",
+       "qty": 40,
+       "unit": "개",
+       "min": 30,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      },
+      {
+       "id": "it058",
+       "name": "약숟가락",
+       "qty": 20,
+       "unit": "개",
+       "min": 15,
+       "expiry": "",
+       "cat": "",
+       "cas": "",
+       "msds": "",
+       "ghs": []
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
