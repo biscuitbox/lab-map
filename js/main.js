@@ -1,10 +1,10 @@
 // 시작: 구글 로그인 → 승인 확인 → Firestore 실시간 구독
 import { configured, watchAuth, redirectResult, getPath, setPath, watchDoc, watchCol } from './firebase.js';
-import { $, S, ui, clone, pending, dbErr, isCfgAdmin, isManager, findBlock, myEmail } from './state.js';
+import { $, S, ui, clone, pending, dbErr, isCfgAdmin, isManager, findBlock, myEmail, migrateMeta, setRoom, roomOf, rooms, saveMeta, saveCab, toast } from './state.js';
 import { render } from './views.js';
 import { OPEN_TO_ALL_GOOGLE } from './config.js';
 import { installHandlers } from './actions.js';
-import { maybeAutoBackup, pruneOld } from './backup.js';
+import { maybeAutoBackup, pruneOld, createBackup } from './backup.js';
 
 installHandlers();
 
@@ -28,7 +28,7 @@ function applyHash() {
   const m = /^#b-([A-Za-z0-9]+)$/.exec(location.hash || '');
   if (!m) { ui.hashDone = true; return; }
   const { cab, b } = findBlock(m[1]); if (!cab) return;
-  ui.hashDone = true; ui.view = 'cab'; ui.cab = cab.id; ui.block = b.id;
+  ui.hashDone = true; setRoom(roomOf(cab)); ui.view = 'cab'; ui.cab = cab.id; ui.block = b.id;
   setTimeout(() => { const p = $('#blockPanel'); if (p && window.innerWidth < 880) p.scrollIntoView({ block: 'start' }); }, 80);
 }
 window.addEventListener('hashchange', () => { ui.hashDone = false; applyHash(); render(); });
@@ -40,11 +40,27 @@ function mergeColl(prefix, store, list) {
   return next;
 }
 
+/* 예전(특별실 하나) 데이터를 여러 특별실 형식으로 한 번 옮겨 저장. 옮기기 전에 백업을 남겨요 */
+let legacy = false;
+async function maybeMigrate() {
+  if (!legacy || ui.migrated || !S.cabsLoaded || !S.meta) return;
+  ui.migrated = true;
+  await createBackup('manual', '여러 특별실로 바꾸기 전 자동 백업');
+  saveMeta();
+  const first = rooms()[0].id;
+  Object.values(S.cabs).forEach(c => { if (c.roomId !== roomOf(c) || !c.roomId) { c.roomId = first; saveCab(c.id); } });
+  legacy = false;
+  toast('이제 여러 특별실을 관리할 수 있어요. 지금까지의 내용은 첫 특별실에 그대로 있어요.');
+}
+
 function startData() {
   stop(dataSubs);
   subsAsManager = isManager();
-  dataSubs.push(watchDoc('meta/main', d => { if (!pending('meta/main')) S.meta = d ? clone(d) : null; S.metaLoaded = true; applyHash(); soft(); maybeAutoBackup(); }, dbErr));
-  dataSubs.push(watchCol('cabinets', (l, fromCache) => { S.cabs = mergeColl('cabinets/', S.cabs, l); if (!fromCache) S.cabsLoaded = true; applyHash(); soft(); maybeAutoBackup(); }, dbErr));
+  dataSubs.push(watchDoc('meta/main', d => {
+    if (!pending('meta/main')) { legacy = !!d && !Array.isArray(d.rooms); S.meta = d ? migrateMeta(clone(d)) : null; }
+    S.metaLoaded = true; applyHash(); soft(); maybeMigrate(); maybeAutoBackup();
+  }, dbErr));
+  dataSubs.push(watchCol('cabinets', (l, fromCache) => { S.cabs = mergeColl('cabinets/', S.cabs, l); if (!fromCache) S.cabsLoaded = true; applyHash(); soft(); maybeMigrate(); maybeAutoBackup(); }, dbErr));
   dataSubs.push(watchCol('trash', l => { S.trash = mergeColl('trash/', S.trash, l); soft(); }, dbErr));
   dataSubs.push(watchCol('backupIndex', (l, fromCache) => { S.bidx = Object.fromEntries(l.map(d => [d.id, d.data])); if (!fromCache) S.idxLoaded = true; soft(); maybeAutoBackup(); pruneOld(); }, dbErr));
   dataSubs.push(watchCol('loans', l => { S.loans = mergeColl('loans/', S.loans, l); soft(); }, dbErr));
@@ -75,7 +91,7 @@ function evalAccess() {
 async function onUser(u) {
   stop(dataSubs); if (memberUnsub) { memberUnsub(); memberUnsub = null; } if (reqUnsub) { reqUnsub(); reqUnsub = null; }
   Object.assign(S, { auth: u, member: null, meta: null, metaLoaded: false, cabs: {}, members: {}, invites: {}, requests: [], loans: {}, logs: {}, myReq: null, trash: {}, bidx: {}, cabsLoaded: false, idxLoaded: false });
-  Object.assign(ui, { hashDone: false, autoBackupDone: false, pruned: false, cmp: null });
+  Object.assign(ui, { hashDone: false, autoBackupDone: false, pruned: false, cmp: null, migrated: false });
   if (!u) { ui.phase = 'signin'; render(); return; }
   ui.phase = 'checking'; render();
   const path = 'members/' + u.uid, profile = { email: myEmail(), name: u.displayName || '', photo: u.photoURL || '' };

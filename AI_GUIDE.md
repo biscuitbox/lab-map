@@ -23,6 +23,7 @@ firestore.rules를 바꿔야 하면 그것도 알려 줘.
 ### 부탁 예시
 - "대여 기록에 '빌려간 학생 수' 칸을 추가해 줘."
 - "재고 부족이면 배치도 블록에도 빨간 점을 보여 줘."
+- "특별실별로 담당 선생님을 정해서, 담당자만 그 특별실을 고칠 수 있게 해 줘."
 - "특별실 종류에 '방송실'을 추가해 줘. 보관장은 '장비장', 모둠 탁자는 '촬영대'로."
 - "학생 도우미용 '보기만 가능' 역할을 만들어 줘."
 - "유효기한이 7일 남은 약품은 맨 위에 따로 모아 보여 줘."
@@ -111,9 +112,18 @@ LICENSE           MIT 이용 조건
 ### 상태
 - `S` (state.js): Firestore와 맞춰지는 데이터
   - `S.auth` 로그인한 Firebase 사용자, `S.member` 내 `members` 문서
-  - `S.meta` 사이트 설정 하나, `S.cabs` 보관장들 `{id: cabinet}`, `S.loans`, `S.logs`, `S.trash`, `S.bidx`(백업 목록), `S.members`, `S.invites`, `S.requests`, `S.myReq`
+  - `S.meta` 사이트 설정 하나(`siteTitle` + 특별실 목록 `rooms`), `S.cabs` 모든 특별실의 보관장 `{id: cabinet}`, `S.loans`, `S.logs`, `S.trash`, `S.bidx`(백업 목록), `S.members`, `S.invites`, `S.requests`, `S.myReq`
 - `ui` (state.js): 이 브라우저에만 있는 화면 상태 (`ui.view`, 선택한 보관장 `ui.cab`, 선택한 블록 `ui.block`, 검색어 `ui.q`, 두 번 누르기 대기 `ui.confirm` 등)
 - `ui.phase`: `'boot' | 'noconfig' | 'signin' | 'checking' | 'gate' | 'ready'`
+
+### 여러 특별실
+- `ui.room` = 지금 보고 있는 특별실 id (이 브라우저에 기억). 바꿀 때는 꼭 `setRoom(id)`를 써요.
+- `M()` = **지금 특별실 객체**(`roomName`, `room`(바닥), `categories`, `furniture`, `layoutLocked`, `terms`, `preset`, `safety`). 특별실 설정을 바꾸면 `saveMeta()`.
+- `rooms()` 모든 특별실(순서대로), `roomById(id)`, `curRoom()`, `roomOf(cab)` 보관장이 놓인 특별실 id.
+- `cabList()` = 지금 특별실의 보관장, `cabList('all')` 또는 `allCabs()` = 모든 특별실. `locate()`·`findBlock()`은 항상 모든 특별실에서 찾아요.
+- `cat(id, roomId)` 분류는 그 특별실 → 다른 특별실 순서로 찾아요. 다른 특별실의 물품을 그릴 때는 `roomOf(cab)`을 넘겨요.
+- `T(k, room)`, `safetyOn(room)`도 특별실별이에요. 재고·대여·통계의 범위는 `ui.scope`('room'|'all')와 `scopeChips()`, `inScope(roomId)`로 정해요.
+- 예전 형식(meta/main에 categories가 바로 있음)은 `migrateMeta()`가 첫 특별실(id `main`)로 바꿔요. 처음 열 때 백업한 뒤 저장해요(`main.js`의 `maybeMigrate`).
 
 ### 그리기
 - `render()` 하나가 현재 탭 전체를 **문자열 HTML로 다시 그려요**. 부분 갱신 없음.
@@ -139,14 +149,15 @@ LICENSE           MIT 이용 조건
 ## 6. 데이터 모양 (Firestore)
 
 ```js
-// meta/main
-{ siteTitle, roomName, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm
-  categories: [{ id, name, color: '#rrggbb', hazard: ''|'acid'|'base'|'oxidizer'|'flammable'|'toxic' }],
-  furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked }],
-  layoutLocked: false, terms: { room, cab, bench, desk, sink }, preset: 'science'|'music'|…|'custom', safety: true }
+// meta/main   — 사이트 설정과 특별실 목록 (규칙상 meta 아래 문서이므로 새 규칙이 필요 없어요)
+{ version: 3, siteTitle,
+  rooms: [{ id, roomName, order, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm
+    categories: [{ id, name, color: '#rrggbb', hazard: ''|'acid'|'base'|'oxidizer'|'flammable'|'toxic' }],
+    furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked }],
+    layoutLocked: false, terms: { room, cab, bench, desk, sink }, preset: 'science'|'maker'|'music'|…|'custom', safety: true }] }
 
-// cabinets/{id}   — 보관장 하나
-{ id, name, cols, rows, x, y, locked, order,
+// cabinets/{id}   — 보관장 하나 (roomId = 놓인 특별실)
+{ id, roomId, name, cols, rows, x, y, locked, order,
   blocks: [{ id, c, r, w, h, label, cat,              // c,r = 칸 위치(0부터), w,h = 차지하는 칸 수
     items: [{ id, name, qty, unit, min: ''|number, expiry: 'YYYY-MM-DD'|'', cat: ''(블록 분류와 같음)|catId,
               cas, msds, ghs: ['GHS01'…'GHS09'], photoAt: ''|ms(사진이 있으면 올린 시각) }] }] }
@@ -158,7 +169,7 @@ LICENSE           MIT 이용 조건
 { month, user, entries: [{ i: itemId, n: name, d: 바뀐양(+/-), t: ms }] }
 
 // trash/{id}       { id, type: 'item'|'block'|'cabinet'|'loan', data, from: { cabId, cabName, blockId, blockLabel, block }, at, by, byName }
-// backups/{id}     { version: 2, meta, cabinets, at }       id: 'auto-YYYY-MM-DD' 또는 'm-ms'
+// backups/{id}     { version: 3, meta, cabinets, at }   (version 2 백업도 normalize()가 읽어요)       id: 'auto-YYYY-MM-DD' 또는 'm-ms'
 // backupIndex/{id} { id, kind: 'auto'|'manual', note, at, by, byName, cabinets, blocks, items }
 // members/{uid}    { email, name, photo, role: 'admin'|'member', at, by }
 // invites/{email}  { at, by }          (이메일 소문자)
@@ -190,6 +201,7 @@ ID는 `uid()`로 만든 영문·숫자 10자. QR 주소는 `사이트주소#b-{b
 3. **`firestore.rules`에 규칙 추가** (예: `match /checks/{docId} { allow read, write: if isMember(); }`) → 콘솔에서 게시
 
 ### 특별실 종류(프리셋) 추가
+(특별실 종류는 새 특별실을 만들 때 고르는 목록이에요. 특별실 자체를 추가하는 건 화면의 ‘＋ 특별실’이 해요.)
 `state.js`의 `PRESETS`에 항목 추가: `broadcast: { label: '방송실', terms: { room: '방송실', cab: '장비장', bench: '촬영대', desk: '조정석', sink: '기타 가구' }, safety: false, cats: cats(['카메라', '마이크', '조명', '케이블', '소모품']) }`
 
 ### 새 역할 추가 (예: 보기만 가능 `viewer`)
@@ -203,6 +215,7 @@ ID는 `uid()`로 만든 영문·숫자 10자. QR 주소는 `사이트주소#b-{b
 - [ ] 새 입력칸에 고정 `id`와 `data-ch`가 있나, 새 버튼에 `data-act`가 있고 `ACT`에 함수가 있나
 - [ ] 사용자 문자열을 `esc()`로 감쌌나
 - [ ] 특별실 이름을 `T()`로 썼나, 안전 기능은 `safetyOn()`으로 감쌌나
+- [ ] 지금 특별실만 볼 곳은 `cabList()`, 전체를 볼 곳은 `allCabs()`/`ui.scope`를 썼나
 - [ ] 새 Firestore 경로에 규칙을 추가했나, 기존 규칙을 느슨하게 만들지 않았나
 - [ ] 지우는 동작이 휴지통을 거치나
 - [ ] 밝은·어두운 화면, 휴대폰 폭에서 깨지지 않나

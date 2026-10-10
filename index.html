@@ -8,7 +8,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M13 4h8M14 4v9L6 27a2.5 2.5 0 0 0 2.2 3.7h17.6A2.5 2.5 0 0 0 28 27l-8-14V4' fill='none' stroke='%231c6a5e' stroke-width='2.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 </head>
@@ -19,7 +19,6 @@
       <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true"><path d="M13 4h8M14 4v9L6 27a2.5 2.5 0 0 0 2.2 3.7h17.6A2.5 2.5 0 0 0 28 27l-8-14V4" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/><path d="M9.5 22h15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><rect x="11" y="24" width="4" height="4" rx="1" fill="currentColor" opacity=".55"/><rect x="16" y="24" width="7" height="4" rx="1" fill="currentColor"/></svg>
       <div style="min-width:0">
         <h1><span id="titleText">과학실 실험장 지도</span><input id="siteTitle" class="titleinput" data-ch="siteTitle" aria-label="사이트 제목" title="눌러서 제목 바꾸기" placeholder="사이트 제목" hidden></h1>
-        <input id="roomName" class="roomname" data-ch="roomName" aria-label="과학실 이름" placeholder="과학실 이름" hidden>
       </div>
     </div>
     <div class="topright">
@@ -31,10 +30,11 @@
       <div class="acct" id="acct"></div>
     </div>
   </header>
+  <nav class="corridor" id="corridor" aria-label="특별실" hidden></nav>
   <div class="stats" id="stats" hidden></div>
   <nav class="tabs" role="tablist" id="tabs" hidden>
     <button role="tab" data-act="tab" data-view="room">배치도</button>
-    <button role="tab" data-act="tab" data-view="cab">실험장 조립</button>
+    <button role="tab" data-act="tab" data-view="cab" id="tab-cab">실험장 조립</button>
     <button role="tab" data-act="tab" data-view="list">재고 목록</button>
     <button role="tab" data-act="tab" data-view="loans">대여 기록</button>
     <button role="tab" data-act="tab" data-view="stats">사용 통계</button>

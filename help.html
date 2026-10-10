@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 34'%3E%3Cpath d='M13 4h8M14 4v9L6 27a2.5 2.5 0 0 0 2.2 3.7h17.6A2.5 2.5 0 0 0 28 27l-8-14V4' fill='none' stroke='%231c6a5e' stroke-width='2.6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="css/style.css">
 <style>
 /* 설명서 레이아웃: 왼쪽 목차(넓은 화면에서 고정) + 오른쪽 본문 */
@@ -62,6 +62,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       <a href="#about">이 사이트로 할 수 있는 일</a>
       <a href="#start">처음 들어가기</a>
       <a href="#screen">화면 둘러보기</a>
+      <a href="#rooms">여러 특별실</a>
       <a href="#room">배치도</a>
       <a href="#build">보관장 조립하기</a>
       <a href="#items">물품 관리</a>
@@ -111,7 +112,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
 
       <section id="screen">
         <h2><span class="no">02</span>화면 둘러보기</h2>
-        <p>맨 위에는 사이트 제목, <b>물품 찾기</b> 칸, 내 계정이 있어요. 그 아래 숫자 칩은 지금 상태를 요약해요. <span class="ui">재고 부족 4</span>처럼 칩을 누르면 해당 물품 목록으로 바로 가요.</p>
+        <p>맨 위에는 사이트 제목, <b>물품 찾기</b> 칸, 내 계정이 있어요. 그 아래 복도에 걸린 <b>명패</b>가 특별실이에요. 칠판색으로 켜진 명패가 지금 보고 있는 특별실이고, 명패의 빨간 숫자는 재고 부족이나 유효기한을 확인할 물품 수예요. 그 아래 숫자 칩은 지금 특별실의 상태를 요약해요. <span class="ui">재고 부족 4</span>처럼 칩을 누르면 해당 물품 목록으로 바로 가요.</p>
         <div class="tablewrap"><table class="tabtable"><thead><tr><th>탭</th><th>여기서 하는 일</th></tr></thead><tbody>
           <tr><td>배치도</td><td>특별실 전체 모습. 실험장과 실험대를 옮기고, 잠그고, 찾은 물품의 위치를 봐요.</td></tr>
           <tr><td>실험장 조립</td><td>실험장 하나를 크게 보고 블록을 붙이거나 물품을 넣고 고쳐요.</td></tr>
@@ -120,12 +121,25 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
           <tr><td>사용 통계</td><td>한 해 동안 많이 쓴 물품과 내년 구입 추천을 봐요.</td></tr>
           <tr><td>QR 라벨</td><td>칸마다 붙일 QR 라벨을 인쇄해요.</td></tr>
           <tr><td>백업·휴지통</td><td>지운 것을 되살리고, 지난 상태와 비교해 되돌려요.</td></tr>
-          <tr><td>설정·사용자</td><td>사용자 승인, 이름과 특별실 종류, 분류 색, 바닥 크기를 바꿔요.</td></tr>
+          <tr><td>설정·사용자</td><td>사용자 승인, 특별실 목록, 특별실별 이름·종류·분류 색·바닥 크기를 바꿔요.</td></tr>
         </tbody></table></div>
       </section>
 
+      <section id="rooms">
+        <h2><span class="no">03</span>여러 특별실</h2>
+        <p>1과학실, 2과학실, 무한상상실처럼 여러 특별실을 한 사이트에서 관리해요. 로그인과 사용자 승인은 한 번이면 되고, 특별실마다 배치도·보관장·분류·부르는 이름을 따로 가져요.</p>
+        <ul>
+          <li><b>옮겨 다니기:</b> 위쪽 명패를 누르면 그 특별실로 바뀌어요. 마지막으로 본 특별실을 기억해 두었다가 다음에 그대로 열어요.</li>
+          <li><b>모든 특별실에서 찾기:</b> 물품 찾기는 모든 특별실을 뒤져요. 찾은 개수가 명패에 초록 숫자로 붙고, 화면 위에 ‘다른 특별실에도 있어요’ 줄이 나와요.</li>
+          <li><b>한꺼번에 보기:</b> 재고 목록·대여 기록·사용 통계에서 <span class="ui">모든 특별실</span>을 누르면 전체를 모아 보고, CSV도 전체로 내려받아요.</li>
+          <li><b>보관장 옮기기:</b> 조립 화면의 <span class="ui">놓인 곳</span>에서 다른 특별실을 고르면 물품째로 옮겨져요. 배치도에서 자리를 다시 잡아 주세요.</li>
+          <li><b>QR 라벨:</b> 라벨에 특별실 이름이 함께 인쇄되고, 어느 특별실 라벨을 찍든 그 칸이 바로 열려요.</li>
+        </ul>
+        <p class="note">특별실을 추가하거나 지우는 일은 관리자가 해요. 명패 줄 끝의 <span class="ui">＋ 특별실</span>을 누르고 이름과 종류(과학실, 무한상상실, 음악실…)를 고르면 그 종류에 맞는 이름과 분류로 만들어져요.</p>
+      </section>
+
       <section id="room">
-        <h2><span class="no">03</span>배치도</h2>
+        <h2><span class="no">04</span>배치도</h2>
         <ul>
           <li><b>옮기기:</b> 실험장이나 실험대를 끌어서 옮겨요. 격자 1칸은 약 50 cm예요.</li>
           <li><b>열기:</b> 실험장을 한 번 누르면 ‘실험장 조립’ 화면이 열려요.</li>
@@ -136,7 +150,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="build">
-        <h2><span class="no">04</span>실험장 조립하기</h2>
+        <h2><span class="no">05</span>실험장 조립하기</h2>
         <ol class="steps">
           <li>위쪽 이름표에서 실험장을 골라요. 처음이면 <span class="ui">＋ 새 실험장</span>을 눌러요.</li>
           <li><span class="ui">가로 칸</span> <span class="ui">세로 칸</span>으로 실제 실험장의 칸 수를 맞춰요.</li>
@@ -150,7 +164,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="items">
-        <h2><span class="no">05</span>물품 관리</h2>
+        <h2><span class="no">06</span>물품 관리</h2>
         <ul>
           <li><b>추가:</b> 블록 편집 칸 아래 이름 칸에 적고 <kbd>Enter</kbd> 또는 <span class="ui">추가</span>.</li>
           <li><b>수량:</b> <span class="ui">−</span> <span class="ui">＋</span>로 바꾸거나 숫자를 직접 고쳐요. 줄인 양은 ‘사용량’, 늘린 양은 ‘보충량’으로 통계에 남아요.</li>
@@ -165,13 +179,13 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="find">
-        <h2><span class="no">06</span>찾기와 재고 목록</h2>
+        <h2><span class="no">07</span>찾기와 재고 목록</h2>
         <p>맨 위 <b>물품 찾기</b> 칸에 ‘염산’, ‘비커’처럼 적으면 배치도에서는 해당 실험장이 테두리로, 해당 블록만 진하게 보여요. 실험장 이름 옆 숫자는 찾은 물품 수예요. 물품 이름, 블록 이름, 분류 이름, CAS 번호로 찾을 수 있어요.</p>
         <p><b>재고 목록</b>에서는 모든 물품을 한 표로 보고 <span class="ui">재고 부족</span> <span class="ui">유효기한 임박·만료</span> <span class="ui">위험 물질</span> <span class="ui">대여 중</span>으로 걸러 봐요. 위치를 누르면 그 블록이 열려요. <span class="ui">재고 목록 CSV 내려받기</span>로 엑셀 파일을 받을 수 있어요.</p>
       </section>
 
       <section id="loans">
-        <h2><span class="no">07</span>대여 기록</h2>
+        <h2><span class="no">08</span>대여 기록</h2>
         <ol class="steps">
           <li><b>대여 기록</b> 탭에서 물품, 수량, 빌려간 곳(예: 2학년 3반 4모둠), 반납 예정일을 적고 <span class="ui">대여 기록</span>.</li>
           <li>물품 편집 칸의 <span class="ui">대여</span>를 누르면 그 물품이 미리 골라진 채로 열려요.</li>
@@ -181,14 +195,14 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="stats">
-        <h2><span class="no">08</span>사용 통계와 구입 추천</h2>
+        <h2><span class="no">09</span>사용 통계와 구입 추천</h2>
         <p>수량을 바꿀 때마다 자동으로 기록돼요. 연도를 고르면 많이 쓴 물품 순위와 <b>내년 구입 추천</b>이 나와요.</p>
         <p class="note">구입 추천 = 한 해 사용량 + 최소 수량 − 지금 수량. 한 해 쓴 만큼 다시 쓴다고 보고, 최소 수량을 지키려면 더 사야 하는 양이에요. <span class="ui">구입 목록 CSV 내려받기</span>로 품의 자료를 만들 때 쓰세요.</p>
         <p>물품을 실제로 쓴 뒤 수량을 줄여야 통계가 정확해요. 새로 산 물품은 ＋로 늘려 주세요.</p>
       </section>
 
       <section id="qr">
-        <h2><span class="no">09</span>QR 라벨</h2>
+        <h2><span class="no">10</span>QR 라벨</h2>
         <ol class="steps">
           <li><b>QR 라벨</b> 탭에서 전체 또는 실험장 하나를 골라요.</li>
           <li><span class="ui">라벨 인쇄</span>를 누르면 새 창에서 A4 3열 라벨이 인쇄돼요. 팝업이 막히면 파일로 내려받아져요.</li>
@@ -198,7 +212,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="undo">
-        <h2><span class="no">10</span>실수했을 때</h2>
+        <h2><span class="no">11</span>실수했을 때</h2>
         <h3>방금 지웠다면</h3>
         <p>지운 직후 화면 아래에 8초 동안 <span class="ui">되돌리기</span>가 떠요. 누르면 원래 자리로 돌아가요.</p>
         <h3>며칠 전에 지웠다면 — 휴지통</h3>
@@ -213,7 +227,7 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
       </section>
 
       <section id="admin">
-        <h2><span class="no">11</span>관리자가 할 일</h2>
+        <h2><span class="no">12</span>관리자가 할 일</h2>
         <h3>선생님 승인하기</h3>
         <ul>
           <li><b>요청 승인:</b> 설정·사용자 → 사용 요청에서 <span class="ui">승인</span>.</li>
@@ -221,16 +235,18 @@ details p{margin-top:8px!important;color:var(--muted);font-size:13.5px}
           <li><b>역할 바꾸기:</b> 승인된 사용자 옆에서 ‘관리자’로 바꾸면 그 사람도 승인과 백업 삭제를 할 수 있어요.</li>
           <li><b>승인 취소:</b> 전근 가신 선생님은 <span class="ui">승인 취소</span>를 두 번 눌러요. 바로 내용을 볼 수 없게 돼요.</li>
         </ul>
+        <h3>특별실 추가·정리</h3>
+        <p>명패 줄 끝의 <span class="ui">＋ 특별실</span>로 새 특별실을 만들어요. 설정·사용자 → <b>특별실 목록</b>에서 순서를 ↑ ↓로 바꾸고, 쓰지 않는 특별실을 지워요. 보관장이 남아 있는 특별실은 지울 수 없어요.</p>
         <h3>이름과 특별실 종류</h3>
-        <p>맨 위 큰 제목을 눌러 바로 바꿀 수 있어요. 설정·사용자 → <b>이름과 특별실 종류</b>에서 과학실·음악실·미술실·기술실·가사실·체육 창고 중 하나를 고르면 화면의 이름이 한 번에 바뀌고, 칸마다 직접 고칠 수도 있어요. 과학실이 아니면 <b>약품 안전 기능</b>을 꺼 두세요.</p>
+        <p>맨 위 큰 제목을 눌러 바로 바꿀 수 있어요. 설정·사용자 → <b>(특별실 이름) 설정</b>에서 과학실·무한상상실·음악실·미술실·기술실·가사실·체육 창고 중 하나를 고르면 그 특별실의 이름이 한 번에 바뀌고, 칸마다 직접 고칠 수도 있어요. 과학실이 아니면 <b>약품 안전 기능</b>을 꺼 두세요.</p>
         <h3>분류 색, 바닥 크기</h3>
-        <p>분류 색을 바꾸면 모든 블록 색이 함께 바뀌어요. 바닥 크기는 격자 칸 수로 맞춰요(1칸 ≈ 50 cm).</p>
+        <p>분류 색은 특별실마다 따로예요. 바꾸면 그 특별실의 모든 블록 색이 함께 바뀌어요. 바닥 크기는 격자 칸 수로 맞춰요(1칸 ≈ 50 cm).</p>
         <h3>학기마다 한 번</h3>
         <p><b>백업·휴지통 → 지금 상태를 파일로 내려받기</b>로 학교 컴퓨터에 백업 파일을 보관해 두세요.</p>
       </section>
 
       <section id="faq">
-        <h2><span class="no">12</span>자주 묻는 질문</h2>
+        <h2><span class="no">13</span>자주 묻는 질문</h2>
         <details><summary>다른 선생님이 고친 내용이 바로 보이나요?</summary><p>네. 같은 화면을 보고 있으면 몇 초 안에 저절로 바뀌어요. 입력칸에 글을 쓰는 중에는 다 쓰고 칸을 벗어날 때 바뀌어요.</p></details>
         <details><summary>인터넷이 잠깐 끊기면 고친 내용이 사라지나요?</summary><p>아니요. 이 브라우저에 잠시 보관했다가 연결되면 자동으로 저장돼요. 다만 창을 닫기 전에 연결이 돌아왔는지 확인해 주세요.</p></details>
         <details><summary>두 사람이 같은 칸을 동시에 고치면요?</summary><p>마지막으로 저장한 내용이 남아요. 같은 실험장을 동시에 크게 고칠 때는 서로 말을 맞춰 주세요. 혹시 겹쳐서 사라진 것이 있으면 백업 비교로 되살릴 수 있어요.</p></details>

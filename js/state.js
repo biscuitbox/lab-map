@@ -41,11 +41,15 @@ export const S = {
   cabs: {}, members: {}, invites: {}, requests: [], loans: {}, logs: {}, myReq: null,
   trash: {}, bidx: {}, cabsLoaded: false, idxLoaded: false
 };
+/* 마지막으로 본 특별실 (이 브라우저에만 기억) */
+const ROOM_KEY = 'lab-map-room';
+let savedRoom = ''; try { savedRoom = localStorage.getItem(ROOM_KEY) || ''; } catch (e) { }
 /* 화면 상태 (이 브라우저에만) */
 export const ui = {
   phase: 'boot', view: 'room', cab: null, block: null, furn: null, q: '', filter: 'all', confirm: null, newCat: 'c_reag',
   U: 30, S: 100, openItem: null, loanItem: '', year: String(new Date().getFullYear()), qrCab: 'all',
-  reqErr: '', hashDone: false, deferred: false, cmp: null, autoBackupDone: false, pruned: false, photo: null
+  reqErr: '', hashDone: false, deferred: false, cmp: null, autoBackupDone: false, pruned: false, photo: null,
+  room: savedRoom, scope: 'room', addingRoom: false, newRoomKind: 'science', swing: null, migrated: false
 };
 
 let toastT;
@@ -104,28 +108,77 @@ export const PRESETS = {
   art: { label: '미술실', terms: { room: '미술실', cab: '재료장', bench: '작업대', desk: '교탁', sink: '개수대' }, safety: false, cats: cats(['물감·채색', '드로잉', '종이', '조소·점토', '판화', '공구', '소모품']) },
   tech: { label: '기술실', terms: { room: '기술실', cab: '공구장', bench: '작업대', desk: '교탁', sink: '개수대' }, safety: false, cats: cats(['수공구', '전동공구', '측정 도구', '목재·재료', '전자 부품', '안전장비', '소모품']) },
   home: { label: '가사실', terms: { room: '가사실', cab: '수납장', bench: '조리대', desk: '교탁', sink: '개수대' }, safety: false, cats: cats(['조리 도구', '식기', '전기 기구', '재봉 도구', '세제·소모품', '안전장비']) },
+  maker: { label: '무한상상실', terms: { room: '무한상상실', cab: '공구장', bench: '작업대', desk: '교탁', sink: '3D 프린터대' }, safety: false, cats: cats(['3D 프린터', '레이저 커터', '수공구', '전동공구', '필라멘트·소재', '전자부품', '측정 도구', '안전장비', '소모품']) },
   pe: { label: '체육 창고', terms: { room: '체육 창고', cab: '선반', bench: '매트', desk: '책상', sink: '공 바구니' }, safety: false, cats: cats(['구기', '육상', '체조·매트', '라켓', '측정·기록', '소모품']) }
 };
 export const TERM_LABELS = { room: '특별실', cab: '보관장 (블록을 붙이는 장)', bench: '모둠 탁자', desk: '앞쪽 책상', sink: '기타 가구' };
-export const T = k => (S.meta && S.meta.terms && S.meta.terms[k]) || PRESETS.science.terms[k];
-export const safetyOn = () => !(S.meta && S.meta.safety === false);
+/* 특별실 목록과 지금 보고 있는 특별실 */
+export const rooms = () => ((S.meta && S.meta.rooms) || []).slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+export const roomById = id => rooms().find(r => r.id === id);
+export function curRoom() {
+  const list = rooms(); if (!list.length) return null;
+  const r = list.find(x => x.id === ui.room) || list[0];
+  if (ui.room !== r.id) ui.room = r.id;
+  return r;
+}
+export function setRoom(id) {
+  if (ui.room !== id) { ui.swing = id; ui.cab = ui.block = ui.furn = null; ui.qrCab = 'all'; }
+  ui.room = id; try { localStorage.setItem(ROOM_KEY, id); } catch (e) { }
+  const r = curRoom(); if (r && !r.categories.some(c => c.id === ui.newCat)) ui.newCat = (r.categories[0] || {}).id || '';
+}
+/* 보관장이 놓인 특별실 (모르는 값이면 첫 특별실) */
+export const roomOf = cab => { const list = rooms(); return cab && list.some(r => r.id === cab.roomId) ? cab.roomId : (list[0] || {}).id; };
+export function newRoom(kind, name, order) {
+  const p = PRESETS[kind] || PRESETS.science;
+  const categories = kind === 'science' ? defaultCats() : p.cats.map(c => ({ id: 'c_' + uid(), name: c.name, color: c.color, hazard: '' }));
+  return { id: 'r' + uid(), roomName: name || p.label, order: order || Date.now(), room: { w: 24, h: 15 }, categories, furniture: [], layoutLocked: false, terms: { ...p.terms }, preset: kind in PRESETS ? kind : 'science', safety: p.safety };
+}
+function fixRoom(r, i) {
+  const p = PRESETS[r.preset] || PRESETS.science;
+  return {
+    id: String(r.id || 'r' + uid()), roomName: r.roomName || p.label, order: r.order || i + 1, room: r.room || { w: 24, h: 15 },
+    categories: r.categories && r.categories.length ? r.categories : defaultCats(), furniture: r.furniture || [], layoutLocked: !!r.layoutLocked,
+    terms: r.terms || { ...p.terms }, preset: r.preset || 'science', safety: r.safety === undefined ? p.safety : !!r.safety
+  };
+}
+/* 예전(특별실 하나) 형식 → 여러 특별실 형식. 예전 내용은 id 'main'인 첫 특별실이 돼요 */
+export function migrateMeta(m) {
+  m = m || {};
+  const rs = Array.isArray(m.rooms) && m.rooms.length ? m.rooms : [{ id: 'main', roomName: m.roomName, order: 1, room: m.room, categories: m.categories, furniture: m.furniture, layoutLocked: m.layoutLocked, terms: m.terms, preset: m.preset, safety: m.safety }];
+  const out = { version: 3, rooms: rs.map(fixRoom) };
+  if (m.siteTitle) out.siteTitle = m.siteTitle;
+  return out;
+}
+export const T = (k, room = curRoom()) => (room && room.terms && room.terms[k]) || PRESETS.science.terms[k];
+export const safetyOn = (room = curRoom()) => !(room && room.safety === false);
 /* 받침에 따라 조사 고르기: j('악기장', '을/를') → '악기장을' */
 export function j(word, pair) {
-  const w = String(word), code = w.trim().slice(-1).charCodeAt(0) - 0xAC00, [a, b] = pair.split('/');
-  if (code < 0 || code > 11171) return w + (/[0-9a-zA-Z]$/.test(w) ? a : b);
-  const jong = code % 28;
+  const w = String(word), [a, b] = pair.split('/');
+  const last = w.replace(/[^\uAC00-\uD7A3A-Za-z0-9]+$/, '').slice(-1), code = last.charCodeAt(0) - 0xAC00;
+  // 받침: 한글은 글자로, 숫자는 읽는 소리(영·일·삼·육·칠·팔 = 받침 있음, 일·칠·팔은 ㄹ)로 판단
+  let jong = 0;
+  if (code >= 0 && code <= 11171) jong = code % 28;
+  else if (/[0136-8]/.test(last)) jong = /[178]/.test(last) ? 8 : 1;
   if (pair === '으로/로') return w + (jong === 0 || jong === 8 ? '로' : '으로');
   return w + (jong ? a : b);
 }
 
 /* 조회 도우미 */
-export const M = () => S.meta;
+/* M() = 지금 보고 있는 특별실 (이름, 바닥, 분류, 가구, 부르는 이름 등) */
+export const M = () => curRoom();
 const FALLBACK = { id: '', name: '미분류', color: '#9aa5a1', hazard: '' };
-export const cat = id => (S.meta && S.meta.categories.find(c => c.id === id)) || FALLBACK;
-export const cabList = () => Object.values(S.cabs).sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(b.name));
+/* 분류 찾기: 그 특별실에서 먼저, 없으면 다른 특별실에서 (보관장을 옮겨도 색이 유지돼요) */
+export function cat(id, rid) {
+  const r = (rid && roomById(rid)) || curRoom();
+  return (r && r.categories.find(c => c.id === id)) || rooms().flatMap(x => x.categories).find(c => c.id === id) || FALLBACK;
+}
+const byOrder = (a, b) => (a.order || 0) - (b.order || 0) || String(a.name).localeCompare(b.name);
+export const allCabs = () => Object.values(S.cabs).sort(byOrder);
+/* cabList() = 지금 특별실의 보관장, cabList('all') = 모든 특별실 */
+export const cabList = (rid = (curRoom() || {}).id) => rid === 'all' ? allCabs() : allCabs().filter(c => roomOf(c) === rid);
 export const findCab = id => S.cabs[id];
-export function locate(itemId) { for (const cab of cabList()) for (const b of cab.blocks) { const it = b.items.find(i => i.id === itemId); if (it) return { cab, b, it }; } return {}; }
-export function findBlock(id) { for (const cab of cabList()) { const b = cab.blocks.find(x => x.id === id); if (b) return { cab, b }; } return {}; }
+export function locate(itemId) { for (const cab of allCabs()) for (const b of cab.blocks) { const it = b.items.find(i => i.id === itemId); if (it) return { cab, b, it }; } return {}; }
+export function findBlock(id) { for (const cab of allCabs()) { const b = cab.blocks.find(x => x.id === id); if (b) return { cab, b }; } return {}; }
 function lin(v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }
 export function ink(hex) { const n = parseInt(String(hex).replace('#', ''), 16); if (isNaN(n)) return '#111'; const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255); return L > .33 ? '#141a18' : '#ffffff'; }
 export const snap = v => Math.round(v * 2) / 2;
@@ -135,7 +188,7 @@ export const cabFoot = cab => ({ w: snap(cab.cols * 1.6 + .4), h: snap(cab.rows 
 export const myEmail = () => (S.auth && S.auth.email || '').toLowerCase();
 export const isCfgAdmin = () => ADMIN_EMAILS.map(e => e.toLowerCase()).includes(myEmail());
 export const isManager = () => isCfgAdmin() || !!(S.member && S.member.role === 'admin');
-export const layoutLocked = () => !!(S.meta && S.meta.layoutLocked);
+export const layoutLocked = () => !!(curRoom() && curRoom().layoutLocked);
 
 export function itemStatus(it) {
   const s = [];
@@ -144,15 +197,16 @@ export function itemStatus(it) {
   return s;
 }
 export function dday(exp) { if (!exp) return ''; const d = Math.round((new Date(exp + 'T00:00:00') - TODAY) / 864e5); return d < 0 ? `${-d}일 지남` : d === 0 ? '오늘' : `D-${d}`; }
-export function hazardsOf(b) {
-  const s = new Set(); const bc = cat(b.cat); if (bc.hazard) s.add(bc.hazard);
-  b.items.forEach(it => { const c = cat(it.cat || b.cat); if (c.hazard) s.add(c.hazard); (it.ghs || []).forEach(g => { if (GHS_HZ[g]) s.add(GHS_HZ[g]); }); });
+export function hazardsOf(b, rid) {
+  const s = new Set(); const bc = cat(b.cat, rid); if (bc.hazard) s.add(bc.hazard);
+  b.items.forEach(it => { const c = cat(it.cat || b.cat, rid); if (c.hazard) s.add(c.hazard); (it.ghs || []).forEach(g => { if (GHS_HZ[g]) s.add(GHS_HZ[g]); }); });
   return s;
 }
 function adjacent(a, b) { const ax = a.c + a.w, ay = a.r + a.h, bx = b.c + b.w, by = b.r + b.h; const v = a.r < by && b.r < ay, h = a.c < bx && b.c < ax; return (v && (ax === b.c || bx === a.c)) || (h && (ay === b.r || by === a.r)); }
 export function conflicts(cab) {
-  if (!safetyOn()) return [];
-  const out = [], H = cab.blocks.map(hazardsOf);
+  const rid = roomOf(cab);
+  if (!safetyOn(roomById(rid))) return [];
+  const out = [], H = cab.blocks.map(b => hazardsOf(b, rid));
   cab.blocks.forEach((b, i) => {
     CONFLICTS.forEach(([x, y, m]) => { if (H[i].has(x) && H[i].has(y)) out.push({ ids: [b.id], where: `‘${b.label}’ 블록 안`, msg: m }); });
     for (let j = i + 1; j < cab.blocks.length; j++) {
@@ -167,18 +221,22 @@ export function canPlace(cab, b, c, r, w, h) {
   return !cab.blocks.some(o => o !== b && c < o.c + o.w && o.c < c + w && r < o.r + o.h && o.r < r + h);
 }
 export const norm = s => String(s || '').toLowerCase().replace(/\s+/g, '');
-export function itemMatch(it, b, q) { const n = norm(q); return norm(it.name).includes(n) || norm(b.label).includes(n) || norm(cat(it.cat || b.cat).name).includes(n) || norm(it.cas).includes(n); }
-export function blockMatch(b, q) { return b.items.some(it => itemMatch(it, b, q)) || norm(b.label).includes(norm(q)); }
-export function matchCount(cab, q) { let n = 0; cab.blocks.forEach(b => b.items.forEach(it => { if (itemMatch(it, b, q)) n++; })); return n; }
+export function itemMatch(it, b, q, rid) { const n = norm(q); return norm(it.name).includes(n) || norm(b.label).includes(n) || norm(cat(it.cat || b.cat, rid).name).includes(n) || norm(it.cas).includes(n); }
+export function blockMatch(b, q, rid) { return b.items.some(it => itemMatch(it, b, q, rid)) || norm(b.label).includes(norm(q)); }
+export function matchCount(cab, q) { const rid = roomOf(cab); let n = 0; cab.blocks.forEach(b => b.items.forEach(it => { if (itemMatch(it, b, q, rid)) n++; })); return n; }
+export const roomMatchCount = (rid, q) => cabList(rid).reduce((a, c) => a + matchCount(c, q), 0);
 export const openLoans = () => Object.values(S.loans).filter(l => !l.returnedAt);
+/* 대여 기록이 속한 특별실 (물품이 지금 있는 곳, 없으면 빌릴 때의 보관장) */
+export function loanRoom(l) { const { cab } = locate(l.itemId); const c = cab || S.cabs[l.cabId]; return c ? roomOf(c) : ''; }
+export const inScope = rid => ui.scope === 'all' || rid === (curRoom() || {}).id;
 export const loanedQty = itemId => openLoans().filter(l => l.itemId === itemId).reduce((a, l) => a + (+l.qty || 0), 0);
-export function stats() {
+export function stats(rid = (curRoom() || {}).id) {
   let items = 0, low = 0, date = 0, warn = 0, blocks = 0;
-  cabList().forEach(cab => {
+  cabList(rid).forEach(cab => {
     blocks += cab.blocks.length; warn += conflicts(cab).length;
     cab.blocks.forEach(b => b.items.forEach(it => { items++; const s = itemStatus(it); if (s.includes('low')) low++; if (s.includes('expired') || s.includes('soon')) date++; }));
   });
-  const ol = openLoans();
+  const ol = openLoans().filter(l => rid === 'all' || loanRoom(l) === rid);
   return { items, low, date, warn, blocks, loans: ol.length, late: ol.filter(l => l.due && l.due < ymd(TODAY)).length };
 }
 export function pname(id, fallback) { const m = S.members[id]; return (m && (m.name || m.email)) || fallback || ''; }
@@ -186,9 +244,9 @@ export function qrSvg(text) { try { if (typeof qrcode !== 'function') return '';
 export const siteUrl = () => SITE_URL || (location.origin + location.pathname);
 export const blockUrl = id => `${siteUrl()}#b-${id}`;
 
-export function allRows() {
+export function allRows(scope = ui.scope) {
   const out = [];
-  cabList().forEach(cab => cab.blocks.forEach(b => b.items.forEach(it => out.push({ cab, b, it, c: cat(it.cat || b.cat), s: itemStatus(it), lq: loanedQty(it.id) }))));
+  cabList(scope === 'all' ? 'all' : undefined).forEach(cab => { const rid = roomOf(cab), room = roomById(rid); cab.blocks.forEach(b => b.items.forEach(it => out.push({ cab, b, it, rid, room, c: cat(it.cat || b.cat, rid), s: itemStatus(it), lq: loanedQty(it.id) }))); });
   return out;
 }
 export const LIST_F = {
@@ -207,24 +265,26 @@ export function yearUsage(Y) {
   Object.values(S.loans).forEach(l => {
     if (String(l.out || '').startsWith(Y)) { const a = agg[l.itemId] || (agg[l.itemId] = { id: l.itemId, name: l.itemName, used: 0, added: 0, loans: 0 }); a.loans++; }
   });
+  const multi = rooms().length > 1;
   return Object.values(agg).map(a => {
-    const { cab, b, it } = locate(a.id); const qty = it ? +it.qty || 0 : 0, min = it && it.min !== '' ? +it.min : 0;
-    return { ...a, name: it ? it.name : a.name, unit: it ? it.unit : '', where: cab ? `${cab.name} › ${b.label}` : '삭제된 물품', qty, min, buy: it ? Math.max(0, a.used + min - qty) : 0 };
-  }).sort((x, y) => y.used - x.used || y.loans - x.loans);
+    const { cab, b, it } = locate(a.id); const qty = it ? +it.qty || 0 : 0, min = it && it.min !== '' ? +it.min : 0, rid = cab ? roomOf(cab) : '';
+    const where = cab ? `${multi ? (roomById(rid) || {}).roomName + ' › ' : ''}${cab.name} › ${b.label}` : '삭제된 물품';
+    return { ...a, rid, name: it ? it.name : a.name, unit: it ? it.unit : '', where, qty, min, buy: it ? Math.max(0, a.used + min - qty) : 0 };
+  }).filter(r => ui.scope === 'all' || r.rid === (curRoom() || {}).id).sort((x, y) => y.used - x.used || y.loans - x.loans);
 }
 
 /* 백업 형식 */
-export const exportData = () => ({ version: 2, meta: S.meta, cabinets: cabList() });
+export const exportData = () => ({ version: 3, meta: S.meta, cabinets: allCabs() });
 export function normalize(d) {
   let meta, cabs;
   if (d && d.meta && Array.isArray(d.cabinets)) { meta = d.meta; cabs = d.cabinets; }
-  else if (d && Array.isArray(d.cabinets) && Array.isArray(d.categories)) { meta = { roomName: d.roomName || '과학실', room: d.room || { w: 24, h: 15 }, categories: d.categories, furniture: d.furniture || [], layoutLocked: false }; cabs = d.cabinets; }
+  else if (d && Array.isArray(d.cabinets) && Array.isArray(d.categories)) { meta = { roomName: d.roomName || '과학실', room: d.room, categories: d.categories, furniture: d.furniture || [] }; cabs = d.cabinets; }
   else throw new Error('형식이 맞지 않아요');
-  meta = clone(meta); meta.room = meta.room || { w: 24, h: 15 }; meta.furniture = meta.furniture || []; meta.layoutLocked = !!meta.layoutLocked;
-  meta.categories = meta.categories && meta.categories.length ? meta.categories : defaultCats();
+  meta = migrateMeta(clone(meta));
+  const rids = new Set(meta.rooms.map(r => r.id)), first = meta.rooms[0].id;
   const sid = v => String(v || '').replace(/[^A-Za-z0-9]/g, '') || uid();
   cabs = cabs.map((c, i) => ({
-    id: sid(c.id), name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
+    id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
     blocks: (c.blocks || []).map(b => ({
       id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '',
       items: (b.items || []).map(it => clone({ ...newItem(it.name || '물품'), ...it, ghs: it.ghs || [] }))
@@ -250,7 +310,7 @@ export const blockShape = b => ({ id: b.id, c: b.c, r: b.r, w: b.w, h: b.h, labe
 export function fmtTime(ms) { const d = new Date(ms); return `${ymd(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 export function flatItems(cabs) { const m = {}; cabs.forEach(c => c.blocks.forEach(b => b.items.forEach(it => { m[it.id] = { cab: c, b, it }; }))); return m; }
 export function backupDiff(data) {
-  const old = flatItems(data.cabinets || []), cur = flatItems(cabList());
+  const old = flatItems(data.cabinets || []), cur = flatItems(allCabs());
   const cabsGone = (data.cabinets || []).filter(c => !S.cabs[c.id]);
   const goneCabIds = new Set(cabsGone.map(c => c.id));
   const removed = Object.values(old).filter(x => !cur[x.it.id] && !goneCabIds.has(x.cab.id));

@@ -3,7 +3,8 @@ import {
   $, esc, ymd, TODAY, S, ui, M, cat, cabList, findCab, locate, ink, clamp, cabFoot, isManager, isCfgAdmin, layoutLocked,
   itemStatus, dday, hazardsOf, conflicts, canPlace, norm, itemMatch, blockMatch, matchCount, openLoans, loanedQty, stats,
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
-  fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS
+  fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
+  rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
 
@@ -12,9 +13,9 @@ const VIEWS = ['room', 'cab', 'list', 'loans', 'stats', 'qr', 'backup', 'set'];
 export function render() {
   const aid = document.activeElement && document.activeElement.id;
   renderAcct();
-  const ready = ui.phase === 'ready' && S.metaLoaded && !!S.meta;
-  $('#stats').hidden = $('#tabs').hidden = $('#searchWrap').hidden = !ready;
-  const rn = $('#roomName'); rn.hidden = !ready; if (ready && document.activeElement !== rn) rn.value = S.meta.roomName || '';
+  const ready = ui.phase === 'ready' && S.metaLoaded && !!S.meta && !!curRoom();
+  $('#stats').hidden = $('#tabs').hidden = $('#searchWrap').hidden = $('#corridor').hidden = !ready;
+  if (ready) renderCorridor();
   const title = siteTitle(), canTitle = ready && isManager(), ti = $('#siteTitle');
   document.title = title; $('#titleText').textContent = title; $('#titleText').hidden = canTitle; ti.hidden = !canTitle;
   if (canTitle && document.activeElement !== ti) ti.value = title;
@@ -24,6 +25,8 @@ export function render() {
   } else {
     $('#gate').hidden = true;
     const s = stats();
+    $('#q').placeholder = rooms().length > 1 ? '물품 찾기 (모든 특별실에서)' : '물품 찾기 (예: 염산, 비커)';
+    $('#tab-cab').textContent = `${T('cab')} 조립`;
     $('#stats').innerHTML = `<span class="stat">${T('cab')} <b>${cabList().length}</b></span><span class="stat">물품 <b>${s.items}</b>종</span>
      <button class="stat ${s.low ? 'warn' : ''}" data-act="goFilter" data-f="low">재고 부족 <b>${s.low}</b></button>
      <button class="stat ${s.date ? 'bad' : ''}" data-act="goFilter" data-f="date">유효기한 임박·만료 <b>${s.date}</b></button>
@@ -37,6 +40,36 @@ export function render() {
   if (aid) { const n = document.getElementById(aid); if (n && n !== document.activeElement) n.focus(); }
   hydratePhotos();
 }
+
+/* 복도: 특별실 명패. 고른 특별실은 칠판색으로 켜지고, 찾는 중이면 찾은 개수를 달아요 */
+function renderCorridor() {
+  const q = ui.q.trim(), cur = curRoom(), mgr = isManager();
+  const plates = rooms().map(r => {
+    const s = stats(r.id), alert = s.low + s.date, hit = q ? roomMatchCount(r.id, q) : 0;
+    const badge = q ? (hit ? `<b class="badge hit">${hit}</b>` : '') : (alert ? `<b class="badge">${alert}</b>` : '');
+    const tip = `${r.roomName} · ${T('cab', r)} ${cabList(r.id).length}개, 물품 ${s.items}종${alert ? `, 확인할 물품 ${alert}종` : ''}`;
+    const on = r.id === cur.id, swing = on && ui.swing === r.id;
+    return `<button class="door ${on ? 'on' : ''} ${swing ? 'swing' : ''} ${q && !hit ? 'quiet' : ''}" data-act="pickRoom" data-id="${r.id}" aria-pressed="${on}" title="${esc(tip)}">${esc(r.roomName)}${badge}</button>`;
+  }).join('');
+  ui.swing = null;
+  const kinds = Object.entries(PRESETS).map(([k, p]) => `<button class="chip" data-act="newRoomKind" data-id="${k}" aria-pressed="${ui.newRoomKind === k}">${p.label}</button>`).join('');
+  $('#corridor').innerHTML = `<div class="rail" role="toolbar" aria-label="특별실 고르기">${plates}${mgr ? `<button class="door add" data-act="addRoomOpen" aria-expanded="${ui.addingRoom}">＋ 특별실</button>` : ''}</div>
+    ${ui.addingRoom && mgr ? `<div class="panel addroom"><h3>새 특별실</h3>
+      <div class="addrow"><input id="newroom-name" placeholder="이름 (예: 2과학실, 무한상상실)" aria-label="새 특별실 이름" autocomplete="off"><button class="btn" data-act="addRoom">만들기</button><button class="btn ghost" data-act="addRoomOpen">취소</button></div>
+      <div class="lbl">종류 · 부르는 이름과 추천 분류가 정해져요</div><div class="chips">${kinds}</div></div>` : ''}`;
+}
+/* 찾는 말이 다른 특별실에도 있으면 알려 주는 줄 */
+function elsewhere(q) {
+  if (!q) return '';
+  const cur = curRoom().id, others = rooms().filter(r => r.id !== cur).map(r => [r, roomMatchCount(r.id, q)]).filter(([, n]) => n);
+  return others.length ? `<div class="elsewhere">‘${esc(q)}’ 다른 특별실에도 있어요 ${others.map(([r, n]) => `<button class="chip" data-act="pickRoom" data-id="${r.id}">${esc(r.roomName)} <span class="num">${n}</span></button>`).join('')}</div>` : '';
+}
+/* 재고·대여·통계에서 '이 특별실만 / 모든 특별실' 고르기 */
+function scopeChips() {
+  if (rooms().length < 2) return '';
+  return `<span class="seg"><button class="chip" data-act="scope" data-s="room" aria-pressed="${ui.scope !== 'all'}">${esc(curRoom().roomName)}만</button><button class="chip" data-act="scope" data-s="all" aria-pressed="${ui.scope === 'all'}">모든 특별실</button></span>`;
+}
+const roomPrefix = cab => rooms().length > 1 && ui.scope === 'all' ? `${esc((roomById(roomOf(cab)) || {}).roomName || '')} › ` : '';
 
 const photoImg = (it, alt) => `<img data-photo="${it.id}" data-at="${it.photoAt}" ${cachedPhoto(it) ? `src="${cachedPhoto(it)}"` : ''} alt="${esc(alt || it.name)}">`;
 function renderLightbox() {
@@ -60,7 +93,7 @@ function renderAcct() {
 
 const ICON_LOCK = '<svg width="26" height="26" viewBox="0 0 26 26" fill="none"><rect x="4" y="11" width="18" height="12" rx="3" stroke="currentColor" stroke-width="2.2"/><path d="M8 11V8a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2.2"/></svg>';
 const G_LOGO = '<svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.2 1.5-4.9 2.3-8.2 2.3-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>';
-const card = (title, body) => `<div class="gate"><div class="panel"><div class="lockart">${ICON_LOCK}</div><h2>${title}</h2>${body}<p class="help">처음이라면 <a href="help.html" target="_blank" rel="noopener">사용설명서</a>를 먼저 읽어 보세요.</p></div></div>`;
+const card = (title, body) => `<div class="gate"><div class="rail gate-rail"><span class="door on">${esc(siteTitle())}</span></div><div class="panel"><h2>${title}</h2>${body}<p class="help">처음이라면 <a href="help.html" target="_blank" rel="noopener">사용설명서</a>를 먼저 읽어 보세요.</p></div></div>`;
 
 function renderGate() {
   const el = $('#gate');
@@ -112,6 +145,7 @@ function renderRoom() {
     <button class="btn ghost sm" data-act="furnLock" aria-pressed="${!!f.locked}">${LOCK_SVG} ${f.locked ? '잠김' : '위치 잠그기'}</button>
     <button class="btn danger sm" data-act="furnDel">삭제</button><button class="btn ghost sm" data-act="furnClose">닫기</button></div>`;
   }
+  h += elsewhere(q);
   h += `<div class="floor-scroll"><div class="floor" style="width:${R.w * U}px;height:${R.h * U}px;--u:${U}px">`;
   M().furniture.forEach(f => {
     const lk = L || f.locked;
@@ -125,12 +159,15 @@ function renderRoom() {
       <div class="mini">${cab.blocks.map(b => {
         const c = cat(b.cat), bw = b.w / cab.cols * iw, bh = b.h / cab.rows * ih;
         const tip = `${b.label} — ${b.items.map(i => i.name).join(', ') || '비어 있음'}`;
-        return `<span class="${q && !blockMatch(b, q) ? 'fade' : ''}" title="${esc(tip)}" style="left:${b.c / cab.cols * 100}%;top:${b.r / cab.rows * 100}%;width:${b.w / cab.cols * 100}%;height:${b.h / cab.rows * 100}%;background:${c.color};color:${ink(c.color)}">${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
+        return `<span class="${q && !blockMatch(b, q, roomOf(cab)) ? 'fade' : ''}" title="${esc(tip)}" style="left:${b.c / cab.cols * 100}%;top:${b.r / cab.rows * 100}%;width:${b.w / cab.cols * 100}%;height:${b.h / cab.rows * 100}%;background:${c.color};color:${ink(c.color)}">${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
       }).join('')}</div></div>`;
   });
-  h += `</div></div><div class="scale"><span>격자 1칸 ≈ 50 cm · 바닥 ${R.w / 2} m × ${R.h / 2} m</span><span>블록에 마우스를 올리면 들어 있는 물품이 보여요.</span></div>`;
+  const meters = Math.max(1, Math.min(4, Math.floor(R.w / 2 / 3)));
+  h += `</div></div><div class="drawfoot">
+    <div class="scalebar" style="--m:${2 * U}px" aria-label="축척 막대: 한 칸 1 m"><div class="sb">${'<i></i>'.repeat(meters)}</div><div class="sbl">${Array.from({ length: meters + 1 }, (_, i) => `<span>${i}${i === meters ? ' m' : ''}</span>`).join('')}</div></div>
+    <div class="titleblock"><div class="tb-name">${esc(M().roomName)}</div><div class="tb-cells"><span><i>축척</i>격자 1칸 = 50 cm</span><span><i>바닥</i>${R.w / 2} × ${R.h / 2} m</span><span><i>${T('cab')}</i>${cabList().length}개</span></div></div></div>`;
   const used = new Set(); cabList().forEach(c => c.blocks.forEach(b => used.add(b.cat)));
-  h += `<div class="legend">${M().categories.filter(c => used.has(c.id)).map(c => `<span><i class="sw" style="background:${c.color}"></i>${esc(c.name)}</span>`).join('')}</div>`;
+  h += `<div class="legend">${[...used].map(id => cat(id)).filter((c, i, a) => c.id && a.indexOf(c) === i).map(c => `<span><i class="sw" style="background:${c.color}"></i>${esc(c.name)}</span>`).join('')}<span class="hint">블록에 마우스를 올리면 들어 있는 물품이 보여요.</span></div>`;
   el.innerHTML = h;
 }
 
@@ -151,7 +188,9 @@ function renderCab() {
    <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><b>${cab.cols}</b><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= 8 ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
    <span class="stepper"><span>세로 칸</span><button data-act="cabSize" data-k="rows" data-d="-1" ${shrinkR ? '' : 'disabled'} aria-label="세로 칸 줄이기">−</button><b>${cab.rows}</b><button data-act="cabSize" data-k="rows" data-d="1" ${cab.rows >= 8 ? 'disabled' : ''} aria-label="세로 칸 늘이기">＋</button></span>
    <button class="btn ghost sm" data-act="cabLock" aria-pressed="${!!cab.locked}">${LOCK_SVG} ${cab.locked ? '배치도 위치 잠김' : '배치도 위치 잠그기'}</button>
+   ${rooms().length > 1 ? `<label class="minl movesel">놓인 곳<select id="cab-room" class="field" data-ch="cabRoom">${rooms().map(r => `<option value="${r.id}" ${r.id === roomOf(cab) ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('')}</select></label>` : ''}
    ${confirmBtn('cabDel', cab.id, `${T('cab')} 삭제`, '한 번 더 누르면 삭제')}</div>
+  ${elsewhere(q)}
   <div class="stage"><div class="cabinet"><div class="plate">${esc(cab.name)}</div>
    <div class="cab-inner" style="width:${cab.cols * S2}px;height:${cab.rows * S2}px;background-size:100% ${S2}px">`;
   const occ = new Set(); cab.blocks.forEach(b => { for (let r = b.r; r < b.r + b.h; r++) for (let c = b.c; c < b.c + b.w; c++) occ.add(r + ',' + c); });
@@ -160,7 +199,7 @@ function renderCab() {
   cab.blocks.forEach(b => {
     const c = cat(b.cat), hz = [...hazardsOf(b)].map(x => HZ[x]).join('·'); let low = 0, ex = 0;
     b.items.forEach(it => { const s = itemStatus(it); if (s.includes('low')) low++; if (s.includes('expired') || s.includes('soon')) ex++; });
-    const hit = q && blockMatch(b, q), room = Math.max(0, Math.floor((b.h * S2 - 62) / 16));
+    const hit = q && blockMatch(b, q, roomOf(cab)), room = Math.max(0, Math.floor((b.h * S2 - 62) / 16));
     h += `<div class="block ${ui.block === b.id ? 'sel' : ''} ${cids.has(b.id) ? 'conf' : ''} ${q ? (hit ? 'hit' : 'fade') : ''}" data-drag="block" data-id="${b.id}" role="button" tabindex="0" aria-label="${esc(b.label)} 블록" style="left:${b.c * S2 + 3}px;top:${b.r * S2 + 3}px;width:${b.w * S2 - 6}px;height:${b.h * S2 - 6}px;background:${c.color};color:${ink(c.color)}">
       <div class="bl">${esc(b.label)}</div><div class="bm">${b.items.length}종${hz && safetyOn() ? ' · ' + hz : ''}</div>
       ${b.items.slice(0, room).map(it => `<div class="bn">${esc(it.name)}</div>`).join('')}
@@ -215,28 +254,29 @@ function pills(it, s) {
 
 function renderList() {
   const el = $('#v-list'), q = ui.q.trim(), all = allRows();
-  const rows = all.filter(LIST_F[ui.filter][1]).filter(r => !q || itemMatch(r.it, r.b, q));
-  let h = `<div class="toolbar">${Object.entries(LIST_F).filter(([, f]) => safetyOn() || !f[2]).map(([k, [n, fn]]) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter === k}">${n} <span class="num">${all.filter(fn).length}</span></button>`).join('')}
+  const rows = all.filter(LIST_F[ui.filter][1]).filter(r => !q || itemMatch(r.it, r.b, q, r.rid));
+  let h = `<div class="toolbar">${scopeChips()}${Object.entries(LIST_F).filter(([, f]) => safetyOn() || !f[2]).map(([k, [n, fn]]) => `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter === k}">${n} <span class="num">${all.filter(fn).length}</span></button>`).join('')}
    <button class="btn ghost sm" data-act="csvInventory">재고 목록 CSV 내려받기</button>${q ? `<span class="hint">‘${esc(q)}’ 검색 결과 ${rows.length}건</span>` : ''}</div>
   <div class="tablewrap"><table><thead><tr><th>물품</th><th>분류</th><th>위치</th><th>수량</th><th>유효기한</th><th>상태</th></tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${r.it.photoAt ? `<button class="thumb sm" data-act="openPhoto" data-id="${r.it.id}" aria-label="사진 보기">${photoImg(r.it)}</button>` : ''}<b style="font-weight:500">${esc(r.it.name)}</b></span> ${ghsMarks(r.it.ghs)}</td>
     <td><span style="display:inline-flex;align-items:center;gap:6px"><i class="sw" style="background:${r.c.color}"></i>${esc(r.c.name)}</span></td>
-    <td><button class="loc" data-act="goBlock" data-cab="${r.cab.id}" data-id="${r.b.id}">${esc(r.cab.name)} › ${esc(r.b.label)}</button></td>
+    <td><button class="loc" data-act="goBlock" data-cab="${r.cab.id}" data-id="${r.b.id}">${roomPrefix(r.cab)}${esc(r.cab.name)} › ${esc(r.b.label)}</button></td>
     <td><span class="qcell"><button data-act="qty" data-id="${r.it.id}" data-d="-1" aria-label="빼기">−</button><span class="num" style="min-width:2.4em;text-align:center">${esc(r.it.qty)}</span><button data-act="qty" data-id="${r.it.id}" data-d="1" aria-label="더하기">＋</button><span class="muted">${esc(r.it.unit)}</span></span></td>
     <td class="num">${r.it.expiry ? `${esc(r.it.expiry)} <span class="muted">${dday(r.it.expiry)}</span>` : '<span class="muted">—</span>'}</td>
     <td>${r.s.length ? pills(r.it, r.s) : ''}${r.lq ? ` <span class="pill loan">대여 중 ${r.lq}</span>` : ''}${!r.s.length && !r.lq ? '<span class="pill ok">정상</span>' : ''}</td></tr>`).join('');
   h += `</tbody></table>${rows.length ? '' : '<div class="empty">조건에 맞는 물품이 없어요.</div>'}</div>`;
+  if (ui.scope !== 'all') h = h.replace('<div class="tablewrap">', elsewhere(q) + '<div class="tablewrap">');
   el.innerHTML = h;
 }
 
 function renderLoans() {
   const el = $('#v-loans'), today = ymd(TODAY), q = ui.q.trim();
   const due = new Date(TODAY); due.setDate(due.getDate() + 7);
-  const open = openLoans().filter(l => !q || norm(l.itemName + l.who).includes(norm(q))).sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9')));
-  const done = Object.values(S.loans).filter(l => l.returnedAt).sort((a, b) => b.returnedAt - a.returnedAt).slice(0, 20);
+  const open = openLoans().filter(l => inScope(loanRoom(l))).filter(l => !q || norm(l.itemName + l.who).includes(norm(q))).sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9')));
+  const done = Object.values(S.loans).filter(l => l.returnedAt && inScope(loanRoom(l))).sort((a, b) => b.returnedAt - a.returnedAt).slice(0, 20);
   const opts = cabList().map(cab => `<optgroup label="${esc(cab.name)}">${cab.blocks.flatMap(b => b.items.map(it => `<option value="${it.id}" ${ui.loanItem === it.id ? 'selected' : ''}>${esc(b.label)} › ${esc(it.name)} (보유 ${esc(it.qty)}${esc(it.unit)})</option>`)).join('')}</optgroup>`).join('');
-  const where = l => { const { cab, b } = locate(l.itemId); return cab ? `<button class="loc" data-act="goBlock" data-cab="${cab.id}" data-id="${b.id}">${esc(cab.name)} › ${esc(b.label)}</button>` : '<span class="muted">삭제된 물품</span>'; };
-  el.innerHTML = `<div class="panel"><h3>대여 기록하기</h3>
+  const where = l => { const { cab, b } = locate(l.itemId); return cab ? `<button class="loc" data-act="goBlock" data-cab="${cab.id}" data-id="${b.id}">${roomPrefix(cab)}${esc(cab.name)} › ${esc(b.label)}</button>` : '<span class="muted">삭제된 물품</span>'; };
+  el.innerHTML = `${scopeChips() ? `<div class="toolbar">${scopeChips()}</div>` : ''}<div class="panel"><h3>대여 기록하기 · ${esc(M().roomName)}</h3>
    <div class="formgrid"><label>물품<select id="loan-item" class="field"><option value="">물품을 고르세요</option>${opts}</select></label>
    <label>수량<input id="loan-qty" class="field" type="number" min="1" value="1"></label>
    <label>빌려간 곳<input id="loan-who" class="field" placeholder="예: 2학년 3반 4모둠, 과학 동아리"></label>
@@ -262,7 +302,7 @@ function renderStats() {
   const el = $('#v-stats'), years = new Set([String(new Date().getFullYear())]);
   Object.values(S.logs).forEach(d => d.month && years.add(String(d.month).slice(0, 4)));
   const rows = yearUsage(ui.year), max = Math.max(1, ...rows.map(r => r.used)), buy = rows.filter(r => r.buy > 0);
-  el.innerHTML = `<div class="toolbar">${[...years].sort().reverse().map(y => `<button class="chip" data-act="pickYear" data-y="${y}" aria-pressed="${ui.year === y}">${y}년</button>`).join('')}
+  el.innerHTML = `<div class="toolbar">${scopeChips()}${[...years].sort().reverse().map(y => `<button class="chip" data-act="pickYear" data-y="${y}" aria-pressed="${ui.year === y}">${y}년</button>`).join('')}
    ${buy.length ? '<button class="btn ghost sm" data-act="csvBuy">구입 목록 CSV 내려받기</button>' : ''}<span class="hint">수량을 줄이면 사용량, 늘리면 보충량으로 자동 기록돼요.</span></div>
   <div class="setgrid">
    <div class="panel"><h3>${ui.year}년 많이 쓴 물품</h3>
@@ -285,13 +325,13 @@ function renderQr() {
    <div class="labels">${qrTargets().flatMap(cab => cab.blocks.map(b => {
      const c = cat(b.cat);
      return `<div class="label" style="border-left-color:${c.color}"><div class="qr">${qrSvg(blockUrl(b.id))}</div>
-     <div class="meta"><span class="muted">${esc(cab.name)}</span><b>${esc(b.label)}</b><span class="muted">${esc(c.name)}</span><div>${esc(b.items.slice(0, 4).map(i => i.name).join(', '))}${b.items.length > 4 ? ` 외 ${b.items.length - 4}종` : ''}</div></div></div>`;
+     <div class="meta"><span class="muted">${esc(M().roomName)} › ${esc(cab.name)}</span><b>${esc(b.label)}</b><span class="muted">${esc(c.name)}</span><div>${esc(b.items.slice(0, 4).map(i => i.name).join(', '))}${b.items.length > 4 ? ` 외 ${b.items.length - 4}종` : ''}</div></div></div>`;
    })).join('') || '<p class="help">블록이 없어요.</p>'}</div>`;
 }
 export function labelsHtml(autoPrint) {
   const cards = qrTargets().flatMap(cab => cab.blocks.map(b => {
     const c = cat(b.cat); const g = [...new Set(b.items.flatMap(i => i.ghs || []))];
-    return `<div class="lab" style="border-left-color:${c.color}"><div class="q">${qrSvg(blockUrl(b.id))}</div><div class="t"><small>${esc(cab.name)} · ${esc(c.name)}</small><b>${esc(b.label)}</b><p>${esc(b.items.slice(0, 6).map(i => i.name).join(', '))}${b.items.length > 6 ? ' 외' : ''}</p>${g.length ? `<p class="g">GHS: ${g.map(x => GHS[x] ? GHS[x][1] : x).join(', ')}</p>` : ''}</div></div>`;
+    return `<div class="lab" style="border-left-color:${c.color}"><div class="q">${qrSvg(blockUrl(b.id))}</div><div class="t"><small>${esc(M().roomName)} · ${esc(cab.name)} · ${esc(c.name)}</small><b>${esc(b.label)}</b><p>${esc(b.items.slice(0, 6).map(i => i.name).join(', '))}${b.items.length > 6 ? ' 외' : ''}</p>${g.length ? `<p class="g">GHS: ${g.map(x => GHS[x] ? GHS[x][1] : x).join(', ')}</p>` : ''}</div></div>`;
   })).join('');
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(siteTitle())} · ${esc(M().roomName)} QR 라벨</title><style>
 @page{size:A4;margin:10mm}body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;margin:16px;color:#111}
@@ -320,21 +360,27 @@ function renderSet() {
    ${members.map(([id, m]) => person(m.photo, m.name, m.email, id === myUid ? `<span class="role">${isCfgAdmin() ? '처음 관리자' : m.role === 'admin' ? '관리자' : '사용자'} · 나</span>` :
      `<select class="field" id="role-${id}" data-ch="memberRole" data-id="${id}" aria-label="역할"><option value="member" ${m.role !== 'admin' ? 'selected' : ''}>사용자</option><option value="admin" ${m.role === 'admin' ? 'selected' : ''}>관리자</option></select>${confirmBtn('removeMember', id, '승인 취소', '한 번 더')}`)).join('') || '<p class="help">아직 승인된 사용자가 없어요.</p>'}`
    : `<p class="help">사용자 승인은 관리자만 할 수 있어요.</p>${members.map(([, m]) => person(m.photo, m.name, m.email, `<span class="pill ok">${m.role === 'admin' ? '관리자' : '사용자'}</span>`)).join('')}`}</div>
-  <div class="panel"><h3>분류와 블록 색</h3><p class="help">색을 바꾸면 모든 ${T('cab')}의 블록 색이 함께 바뀌어요.${safetyOn() ? ' ‘위험 성질’은 보관 경고 검사에 쓰여요.' : ''}</p>
-   ${M().categories.map(c => `<div class="catrow"><input type="color" id="cat-${c.id}-color" data-ch="catColor" data-id="${c.id}" value="${c.color}" aria-label="${esc(c.name)} 색">
-    <input class="field" id="cat-${c.id}-name" data-ch="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="분류 이름">
-    ${safetyOn() ? `<select class="field" id="cat-${c.id}-hz" data-ch="catHz" data-id="${c.id}" aria-label="위험 성질"><option value="">위험 성질 없음</option>${Object.entries(HZ).map(([k, v]) => `<option value="${k}" ${c.hazard === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : '<span></span>'}
-    ${confirmBtn('catDel', c.id, '삭제', use[c.id] ? `${use[c.id]}곳 사용 중 · 삭제` : '정말 삭제')}</div>`).join('')}
-   <div><button class="btn ghost" data-act="catAdd">＋ 분류 추가</button></div></div>
-  <div class="panel"><h3>이름과 특별실 종류</h3><p class="help">과학실뿐 아니라 다른 특별실에서도 쓸 수 있어요. 종류를 고르면 화면에 나오는 이름이 한 번에 바뀌고, 아래 칸에서 하나씩 고칠 수도 있어요.</p>
-    ${isManager() ? `<label class="minl" style="width:100%">사이트 큰 제목<input id="set-siteTitle" class="field" style="width:100%;padding:7px 9px;font-size:13.5px" data-ch="siteTitle" value="${esc(siteTitle())}" placeholder="예: 음악실 악기 지도"></label>` : `<p class="help">사이트 큰 제목: <b>${esc(siteTitle())}</b> (관리자만 바꿀 수 있어요)</p>`}
-    <label class="minl" style="width:100%">특별실 이름 (제목 아래 작은 글씨)<input id="set-roomName" class="field" style="width:100%;padding:7px 9px;font-size:13.5px" data-ch="roomName" value="${esc(M().roomName || '')}" placeholder="예: 제1과학실, 2층 음악실"></label>
+  <div class="panel"><h3>특별실 목록</h3>
+    ${mgr ? `<label class="minl stack">사이트 큰 제목<input id="set-siteTitle" class="field" style="padding:7px 9px;font-size:13.5px" data-ch="siteTitle" value="${esc(siteTitle())}" placeholder="예: 해연중 특별실 지도"></label>` : `<p class="help">사이트 큰 제목: <b>${esc(siteTitle())}</b></p>`}
+    <p class="help">로그인과 사용자 승인은 모든 특별실이 함께 써요. 특별실마다 배치도, ${T('cab')}, 분류, 부르는 이름을 따로 가져요.</p>
+    <div>${rooms().map((r, i, list) => `<div class="roomrow ${r.id === curRoom().id ? 'cur' : ''}"><button class="door mini" data-act="pickRoom" data-id="${r.id}">${esc(r.roomName)}</button>
+      <span class="muted">${(PRESETS[r.preset] || {}).label || '직접 고침'} · ${T('cab', r)} ${cabList(r.id).length}개</span>
+      ${mgr ? `<span class="roomtools"><button class="btn ghost sm" data-act="moveRoom" data-id="${r.id}" data-d="-1" ${i ? '' : 'disabled'} aria-label="${esc(r.roomName)} 앞으로">↑</button><button class="btn ghost sm" data-act="moveRoom" data-id="${r.id}" data-d="1" ${i < list.length - 1 ? '' : 'disabled'} aria-label="${esc(r.roomName)} 뒤로">↓</button>${list.length > 1 ? confirmBtn('delRoom', r.id, '지우기', '한 번 더 누르면 지워요') : ''}</span>` : ''}</div>`).join('')}</div>
+    ${mgr ? `<div><button class="btn ghost" data-act="addRoomOpen">＋ 특별실 추가</button></div><p class="help">${T('cab')}이 남아 있는 특별실은 지울 수 없어요. 조립 화면의 ‘놓인 곳’에서 다른 특별실로 옮길 수 있어요.</p>` : '<p class="help">특별실 추가와 삭제는 관리자만 할 수 있어요.</p>'}</div>
+  <div class="panel"><h3>${esc(M().roomName)} 설정</h3><p class="help">종류를 고르면 이 특별실에서 쓰는 이름이 한 번에 바뀌어요. 아래 칸에서 하나씩 고칠 수도 있어요.</p>
+    <label class="minl stack">특별실 이름<input id="set-roomName" class="field" style="padding:7px 9px;font-size:13.5px" data-ch="roomName" value="${esc(M().roomName || '')}" placeholder="예: 1과학실, 무한상상실"></label>
     <div class="lbl">특별실 종류</div>
     <div class="chips">${Object.entries(PRESETS).map(([k, p]) => `<button class="chip" data-act="applyPreset" data-id="${k}" aria-pressed="${(M().preset || 'science') === k}">${p.label}</button>`).join('')}${M().preset === 'custom' ? '<span class="chip" aria-pressed="true">직접 고침</span>' : ''}</div>
     <div class="lbl">부르는 이름</div>
     <div class="formgrid">${Object.entries(TERM_LABELS).map(([k, l]) => `<label>${l}<input id="term-${k}" class="field" data-ch="term" data-id="${k}" value="${esc(T(k))}"></label>`).join('')}</div>
     <label class="minl" style="color:var(--ink);font-size:13px"><input id="set-safety" type="checkbox" data-ch="safetyOn" ${safetyOn() ? 'checked' : ''}> 약품 안전 기능 쓰기 (GHS·MSDS·위험 성질·보관 경고)</label>
     ${(PRESETS[M().preset] || {}).cats && PRESETS[M().preset].cats.length ? `<div><button class="btn ghost sm" data-act="addPresetCats">${PRESETS[M().preset].label} 추천 분류 더하기</button></div>` : ''}</div>
+  <div class="panel"><h3>분류와 블록 색 · ${esc(M().roomName)}</h3><p class="help">색을 바꾸면 이 특별실의 모든 ${T('cab')} 블록 색이 함께 바뀌어요.${safetyOn() ? ' ‘위험 성질’은 보관 경고 검사에 쓰여요.' : ''}</p>
+   ${M().categories.map(c => `<div class="catrow"><input type="color" id="cat-${c.id}-color" data-ch="catColor" data-id="${c.id}" value="${c.color}" aria-label="${esc(c.name)} 색">
+    <input class="field" id="cat-${c.id}-name" data-ch="catName" data-id="${c.id}" value="${esc(c.name)}" aria-label="분류 이름">
+    ${safetyOn() ? `<select class="field" id="cat-${c.id}-hz" data-ch="catHz" data-id="${c.id}" aria-label="위험 성질"><option value="">위험 성질 없음</option>${Object.entries(HZ).map(([k, v]) => `<option value="${k}" ${c.hazard === k ? 'selected' : ''}>${v}</option>`).join('')}</select>` : '<span></span>'}
+    ${confirmBtn('catDel', c.id, '삭제', use[c.id] ? `${use[c.id]}곳 사용 중 · 삭제` : '정말 삭제')}</div>`).join('')}
+   <div><button class="btn ghost" data-act="catAdd">＋ 분류 추가</button></div></div>
   <div class="panel"><h3>${T('room')} 바닥</h3><p class="help">격자 1칸은 약 50 cm예요.</p>
     <div class="sizes"><span class="stepper"><span>가로</span><button data-act="roomSize" data-k="w" data-d="-1" aria-label="가로 줄이기">−</button><b>${M().room.w}</b><button data-act="roomSize" data-k="w" data-d="1" aria-label="가로 늘이기">＋</button></span>
     <span class="stepper"><span>세로</span><button data-act="roomSize" data-k="h" data-d="-1" aria-label="세로 줄이기">−</button><b>${M().room.h}</b><button data-act="roomSize" data-k="h" data-d="1" aria-label="세로 늘이기">＋</button></span>

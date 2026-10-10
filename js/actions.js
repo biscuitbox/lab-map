@@ -3,7 +3,8 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn,
+  rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
 import { restoreTrash, restoreItem, restoreCabinet, createBackup } from './backup.js';
@@ -29,16 +30,16 @@ function download(name, text, mime) {
 }
 const csvCell = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
 const csv = rows => '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
-const fileBase = () => (M().roomName || T('room')).replace(/[\\/:*?"<>|]/g, '');
+const fileBase = (all) => (all ? siteTitle() : (M().roomName || T('room'))).replace(/[\\/:*?"<>|]/g, '');
 
 function replaceAll({ meta, cabs }) {
   Object.keys(S.cabs).forEach(id => { if (!cabs.find(c => c.id === id)) { delete S.cabs[id]; saveCab(id); } });
   cabs.forEach(c => { S.cabs[c.id] = c; saveCab(c.id); });
   S.meta = meta; saveMeta();
-  ui.cab = ui.block = ui.furn = null; render();
+  ui.cab = ui.block = ui.furn = null; setRoom(meta.rooms.some(r => r.id === ui.room) ? ui.room : meta.rooms[0].id); render();
 }
 function addCab() {
-  const n = cabList().length + 1, cab = { id: uid(), name: `${T('cab')} ${String.fromCharCode(64 + Math.min(n, 26))}`, cols: 3, rows: 3, x: .5, y: .5, locked: false, order: Date.now(), blocks: [] };
+  const n = cabList().length + 1, cab = { id: uid(), roomId: M().id, name: `${T('cab')} ${String.fromCharCode(64 + Math.min(n, 26))}`, cols: 3, rows: 3, x: .5, y: .5, locked: false, order: Date.now(), blocks: [] };
   const ft = cabFoot(cab), R = M().room;
   cab.x = clamp(snap(.5 + (n - 1) * .5), 0, Math.max(0, R.w - ft.w)); cab.y = clamp(snap(R.h - ft.h - .5), 0, Math.max(0, R.h - ft.h));
   S.cabs[cab.id] = cab; saveCab(cab.id); ui.view = 'cab'; ui.cab = cab.id; ui.block = null; render();
@@ -56,7 +57,30 @@ const ACT = {
   goFilter: t => { ui.view = 'list'; ui.filter = t.dataset.f; render(); },
   goWarn: () => { const c = cabList().find(c => conflicts(c).length); if (!c) { toast('보관 경고가 없어요'); return; } ui.view = 'cab'; ui.cab = c.id; ui.block = null; render(); const w = $('#warns'); if (w) w.scrollIntoView({ block: 'nearest' }); },
   filter: t => { ui.filter = t.dataset.f; render(); },
-  goBlock: t => { ui.view = 'cab'; ui.cab = t.dataset.cab; ui.block = t.dataset.id; render(); },
+  goBlock: t => { const c = S.cabs[t.dataset.cab]; if (c) setRoom(roomOf(c)); ui.view = 'cab'; ui.cab = t.dataset.cab; ui.block = t.dataset.id; render(); },
+  pickRoom: t => { setRoom(t.dataset.id); ui.addingRoom = false; render(); },
+  scope: t => { ui.scope = t.dataset.s; render(); },
+  addRoomOpen: () => { ui.addingRoom = !ui.addingRoom; render(); const n = $('#newroom-name'); if (n) n.focus(); },
+  newRoomKind: t => { ui.newRoomKind = t.dataset.id; render(); },
+  addRoom: () => {
+    if (!isManager()) return;
+    const inp = $('#newroom-name'), kind = ui.newRoomKind, name = (inp && inp.value.trim()) || PRESETS[kind].label;
+    if (rooms().some(r => r.roomName === name)) { toast(`‘${name}’ 이름의 특별실이 이미 있어요. 다른 이름을 적어 주세요.`); if (inp) inp.focus(); return; }
+    const r = newRoom(kind, name, Math.max(0, ...rooms().map(x => x.order || 0)) + 1);
+    S.meta.rooms.push(r); saveMeta(); ui.addingRoom = false; setRoom(r.id); ui.view = 'room'; render();
+    toast(`${j(`‘${name}’`, '을/를')} 만들었어요. ${j(`＋ ${T('cab')}`, '으로/로')} 첫 ${T('cab')}을 놓아 보세요.`);
+  },
+  moveRoom: t => {
+    const list = rooms(), i = list.findIndex(r => r.id === t.dataset.id), k = i + +t.dataset.d; if (i < 0 || k < 0 || k >= list.length) return;
+    list.forEach((r, n) => { r.order = n + 1; }); list[i].order = k + 1; list[k].order = i + 1; saveMeta(); render();
+  },
+  delRoom: t => {
+    const r = roomById(t.dataset.id); if (!r || !isManager()) return;
+    if (rooms().length < 2) { toast('특별실은 하나 이상 있어야 해요'); return; }
+    const n = cabList(r.id).length; if (n) { toast(`‘${r.roomName}’에 ${T('cab', r)} ${n}개가 있어요. 먼저 다른 특별실로 옮기거나 지워 주세요.`); return; }
+    if (needConfirm('delRoom:' + r.id)) return;
+    S.meta.rooms = S.meta.rooms.filter(x => x.id !== r.id); saveMeta(); setRoom(rooms()[0].id); render(); toast(`${j(`‘${r.roomName}’`, '을/를')} 지웠어요`);
+  },
   addCab,
   addFurn: t => {
     const d = FURN[t.dataset.type], R = M().room, n = M().furniture.filter(f => f.type === t.dataset.type).length;
@@ -78,7 +102,7 @@ const ACT = {
   cabDel: t => { if (needConfirm('cabDel:' + t.dataset.id)) return; const c = S.cabs[t.dataset.id]; const tid = toTrash('cabinet', c, { cabId: c.id, cabName: c.name }); delete S.cabs[c.id]; saveCab(c.id); ui.cab = null; ui.block = null; render(); undoable(`‘${c.name}’ ${j(T('cab'), '을/를')} 휴지통으로 옮겼어요`, tid); },
   newCat: t => { ui.newCat = t.dataset.id; render(); },
   addBlock: t => {
-    const cab = findCab(ui.cab), c = cat(ui.newCat).id ? ui.newCat : (M().categories[0] || {}).id || '';
+    const cab = findCab(ui.cab), c = M().categories.some(x => x.id === ui.newCat) ? ui.newCat : (M().categories[0] || {}).id || '';
     const b = { id: uid(), c: +t.dataset.c, r: +t.dataset.r, w: 1, h: 1, label: cat(c).name, cat: c, items: [] };
     cab.blocks.push(b); ui.block = b.id; saveCab(cab.id); render(); const n = $('#new-item'); if (n) n.focus();
   },
@@ -119,9 +143,9 @@ const ACT = {
     w.document.open(); w.document.write(labelsHtml(true)); w.document.close();
   },
   saveLabels: () => download(`${fileBase()} QR 라벨.html`, labelsHtml(false), 'text/html'),
-  csvInventory: () => download(`${fileBase()} 재고 ${ymd(new Date())}.csv`, csv([[T('cab'), '블록', '물품', '분류', '수량', '단위', '최소', '유효기한', '대여 중', 'CAS', 'GHS']]
-    .concat(allRows().map(r => [r.cab.name, r.b.label, r.it.name, r.c.name, r.it.qty, r.it.unit, r.it.min, r.it.expiry, r.lq, r.it.cas, (r.it.ghs || []).map(g => GHS[g] ? GHS[g][1] : g).join(' ')]))), 'text/csv'),
-  csvBuy: () => download(`${fileBase()} 구입 추천 ${ui.year}.csv`, csv([['물품', '위치', '지금 수량', '단위', '최소', '연간 사용량', '연간 보충량', '구입 추천']]
+  csvInventory: () => download(`${fileBase(ui.scope === 'all')} 재고 ${ymd(new Date())}.csv`, csv([['특별실', T('cab'), '블록', '물품', '분류', '수량', '단위', '최소', '유효기한', '대여 중', 'CAS', 'GHS']]
+    .concat(allRows().map(r => [r.room ? r.room.roomName : '', r.cab.name, r.b.label, r.it.name, r.c.name, r.it.qty, r.it.unit, r.it.min, r.it.expiry, r.lq, r.it.cas, (r.it.ghs || []).map(g => GHS[g] ? GHS[g][1] : g).join(' ')]))), 'text/csv'),
+  csvBuy: () => download(`${fileBase(ui.scope === 'all')} 구입 추천 ${ui.year}.csv`, csv([['물품', '위치', '지금 수량', '단위', '최소', '연간 사용량', '연간 보충량', '구입 추천']]
     .concat(yearUsage(ui.year).filter(r => r.buy > 0).map(r => [r.name, r.where, r.qty, r.unit, r.min, r.used, r.added, r.buy]))), 'text/csv'),
   catAdd: () => { M().categories.push({ id: 'c_' + uid(), name: '새 분류', color: '#5b8def', hazard: '' }); saveMeta(); render(); },
   catDel: t => {
@@ -137,19 +161,19 @@ const ACT = {
     saveMeta(); render();
   },
   copyJson: () => { const ta = $('#io-out'), fb = () => { ta.focus(); ta.select(); toast('선택해 두었어요. Ctrl+C로 복사하세요'); }; try { navigator.clipboard.writeText(ta.value).then(() => toast('데이터를 복사했어요'), fb); } catch (e) { fb(); } },
-  saveBackup: () => download(`${fileBase()} 백업 ${ymd(new Date())}.json`, JSON.stringify(exportData(), null, 1), 'application/json'),
+  saveBackup: () => download(`${fileBase(true)} 백업 ${ymd(new Date())}.json`, JSON.stringify(exportData(), null, 1), 'application/json'),
   importJson: async () => {
     if (S.meta && needConfirm('importJson:x')) return;
     let data; try { data = normalize(JSON.parse($('#io-in').value)); } catch (e) { toast('불러오지 못했어요. 백업 내용 전체를 붙여 넣었는지 확인하세요'); return; }
     if (S.meta) await createBackup('manual', '파일 불러오기 전 자동 백업');
     replaceAll(data); toast('불러왔어요. 바꾸기 전 상태는 백업 목록에 남겨 두었어요.');
   },
-  startEmpty: () => { S.meta = { siteTitle: SITE_TITLE, roomName: T('room'), room: { w: 24, h: 15 }, categories: defaultCats(), furniture: [], layoutLocked: false }; saveMeta(); render(); },
+  startEmpty: () => { const r = newRoom('science', '1과학실', 1); S.meta = { version: 3, siteTitle: SITE_TITLE, rooms: [r] }; saveMeta(); setRoom(r.id); render(); },
   startSample: async () => {
     try { const r = await fetch('data/sample.json', { cache: 'no-store' }); replaceAll(normalize(await r.json())); toast('예시 데이터로 시작했어요. 학교에 맞게 고쳐 쓰세요.'); }
     catch (e) { toast('예시 데이터를 불러오지 못했어요'); }
   },
-  resetEmpty: async () => { if (needConfirm('resetEmpty:x')) return; await createBackup('manual', '모두 비우기 전 자동 백업'); Object.keys(S.cabs).forEach(id => { delete S.cabs[id]; saveCab(id); }); M().furniture = []; saveMeta(); render(); toast('비웠어요. 비우기 전 상태는 백업 목록에 있어요.'); },
+  resetEmpty: async () => { if (needConfirm('resetEmpty:x')) return; await createBackup('manual', `${M().roomName} 비우기 전 자동 백업`); cabList().forEach(c => { delete S.cabs[c.id]; saveCab(c.id); }); M().furniture = []; saveMeta(); render(); toast('비웠어요. 비우기 전 상태는 백업 목록에 있어요.'); },
   restoreTrash: t => { const r = restoreTrash(t.dataset.id); render(); toast(r.msg); },
   purgeTrash: t => { if (needConfirm('purgeTrash:' + t.dataset.id)) return; const tr = S.trash[t.dataset.id]; if (tr) photoIdsIn(tr.type, tr.data).forEach(id => { if (!locate(id).it) deletePhoto(id); }); delete S.trash[t.dataset.id]; put('trash/' + t.dataset.id, null); render(); toast('영구 삭제했어요'); },
   backupNow: async () => { const id = await createBackup('manual', '직접 백업'); if (id) { render(); toast('지금 상태를 백업했어요'); } },
@@ -168,7 +192,7 @@ const ACT = {
     await createBackup('manual', '전체 되돌리기 전 자동 백업'); replaceAll(data); ui.cmp = null; ui.view = 'backup'; render(); toast('백업 시점으로 되돌렸어요. 되돌리기 전 상태도 백업 목록에 있어요.');
   },
   delBackup: async t => { const id = t.dataset.id; if (needConfirm('delBackup:' + id)) return; try { await delPath('backups/' + id); await delPath('backupIndex/' + id); delete S.bidx[id]; if (ui.cmp && ui.cmp.id === id) ui.cmp = null; render(); } catch (e) { dbErr(e); } },
-  backupFile: async t => { try { const d = await getPath('backups/' + t.dataset.id); if (!d) throw 0; download(`${fileBase()} 백업 ${t.dataset.id}.json`, JSON.stringify(d, null, 1), 'application/json'); } catch (e) { toast('내려받지 못했어요'); } },
+  backupFile: async t => { try { const d = await getPath('backups/' + t.dataset.id); if (!d) throw 0; download(`${fileBase(true)} 백업 ${t.dataset.id}.json`, JSON.stringify(d, null, 1), 'application/json'); } catch (e) { toast('내려받지 못했어요'); } },
   requestAccess: async () => {
     ui.reqErr = '';
     try { await setPath('requests/' + S.auth.uid, { ...profileOf(), at: Date.now() }); S.myReq = { at: Date.now() }; }
@@ -197,7 +221,12 @@ const ACT = {
 const itemCh = fn => t => { const { cab, it } = locate(t.dataset.id); if (!it) return; fn(it, t); saveCab(cab.id); };
 const CH = {
   roomName: t => { M().roomName = t.value.trim() || T('room'); saveMeta(); },
-  siteTitle: t => { if (!isManager()) return; M().siteTitle = t.value.trim() || SITE_TITLE; saveMeta(); toast('사이트 제목을 바꿨어요'); },
+  siteTitle: t => { if (!isManager()) return; S.meta.siteTitle = t.value.trim() || SITE_TITLE; saveMeta(); toast('사이트 제목을 바꿨어요'); },
+  cabRoom: t => {
+    const c = findCab(ui.cab), r = roomById(t.value); if (!c || !r) return;
+    c.roomId = r.id; const ft = cabFoot(c); c.x = clamp(c.x, 0, Math.max(0, r.room.w - ft.w)); c.y = clamp(c.y, 0, Math.max(0, r.room.h - ft.h)); c.locked = false; saveCab(c.id);
+    setRoom(r.id); ui.cab = c.id; toast(`${j(`‘${c.name}’`, '을/를')} ${j(r.roomName, '으로/로')} 옮겼어요. 배치도에서 자리를 잡아 주세요.`);
+  },
   cabName: t => { const c = findCab(ui.cab); c.name = t.value.trim() || `이름 없는 ${T('cab')}`; saveCab(c.id); },
   blkLabel: t => { const { cab, b } = findBlock(ui.block); b.label = t.value.trim() || '블록'; saveCab(cab.id); },
   itName: itemCh((it, t) => it.name = t.value.trim() || '이름 없는 물품'),
@@ -260,6 +289,8 @@ export function installHandlers() {
     if (e.key === 'Escape' && ui.photo) { ui.photo = null; render(); return; }
     if (e.key === 'Enter' && e.target.id === 'new-item') { e.preventDefault(); ACT.addItem(); return; }
     if (e.key === 'Enter' && e.target.id === 'invite-email') { e.preventDefault(); ACT.invite(); return; }
+    if (e.key === 'Enter' && e.target.id === 'newroom-name') { e.preventDefault(); ACT.addRoom(); return; }
+    if (e.key === 'Escape' && ui.addingRoom) { ui.addingRoom = false; render(); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('block')) { e.preventDefault(); ui.block = e.target.dataset.id; render(); }
   });
   document.addEventListener('change', e => {

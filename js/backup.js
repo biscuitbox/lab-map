@@ -2,7 +2,7 @@
 import { setPath, delPath } from './firebase.js';
 import { deletePhoto, photoIdsIn } from './photos.js';
 import {
-  S, ui, uid, clone, ymd, put, dbErr, saveCab, saveLoan, locate, canPlace, cabFoot, clamp, M, T, j,
+  S, ui, uid, clone, ymd, put, dbErr, saveCab, saveLoan, locate, canPlace, cabFoot, clamp, T, j, roomOf, roomById,
   exportData, counts, byName, KEEP_DAYS, isManager
 } from './state.js';
 
@@ -58,7 +58,7 @@ export function restoreCabinet(cabData) {
   }
   const c = clone(cabData);
   c.blocks.forEach(b => { b.items = b.items.filter(it => !locate(it.id).it); });
-  const ft = cabFoot(c), R = M().room; c.x = clamp(c.x, 0, Math.max(0, R.w - ft.w)); c.y = clamp(c.y, 0, Math.max(0, R.h - ft.h));
+  c.roomId = roomOf(c); const ft = cabFoot(c), R = roomById(c.roomId).room; c.x = clamp(c.x, 0, Math.max(0, R.w - ft.w)); c.y = clamp(c.y, 0, Math.max(0, R.h - ft.h));
   S.cabs[c.id] = c; saveCab(c.id);
   return { ok: true, msg: `‘${c.name}’ ${j(T('cab'), '을/를')} 되살렸어요` };
 }

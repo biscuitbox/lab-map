@@ -1,5 +1,10 @@
-/* Layout: 상단 바 + 탭. 배치도 = 모눈 바닥 위 실험장 카드, 조립 = 프레임 안 블록 격자 + 오른쪽 편집 패널 */
+/* Layout: 상단 바 → 복도(교실 명패) → 요약 → 탭. 배치도 = 모눈 바닥 + 도면 표제란, 조립 = 보관장 틀 안 블록(라벨 테이프) + 오른쪽 편집 패널
+   Type: 명패·제목·표제란 = Do Hyeon(학교 간판 글꼴), 본문 = IBM Plex Sans KR, 숫자 = IBM Plex Mono
+   Color: 벽(연한 회녹색) 위에 칠판색 명패, 강조는 칠판 초록 하나 */
 :root{
+  --board:#24493e; --board-edge:#14302a; --chalk:#f3f6ee; --door-off:#fbfcf9; --door-off-ink:#24493e; --rail:#a3b1ab;
+  --tape:#fbfaf2; --tape-ink:#1b1f1d;
+  --f-sign:"Do Hyeon","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --bg:#eef1ef; --surface:#fbfcfb; --surface-2:#e3e9e6; --ink:#16201d; --muted:#5a6863; --line:#cbd4d0;
   --accent:#1c6a5e; --accent-ink:#ffffff; --accent-soft:rgba(28,106,94,.12);
   --warn:#9a5806; --warn-soft:rgba(214,140,30,.17); --danger:#b3301f; --danger-soft:rgba(200,60,45,.12);
@@ -13,15 +18,18 @@
   --accent:#5fc3ae; --accent-ink:#0c1412; --accent-soft:rgba(95,195,174,.14);
   --warn:#e6a54d; --warn-soft:rgba(230,165,77,.16); --danger:#f07b6b; --danger-soft:rgba(240,123,107,.14);
   --floor:#141b19; --grid:rgba(95,195,174,.09); --frame:#2d3935; --frame-ink:#dde6e2; --frame-in:#1b2321;
+  --board:#2c5a4c; --board-edge:#0f231d; --chalk:#f1f5ec; --door-off:#19211f; --door-off-ink:#a9d3c3; --rail:#3d4b46;
   color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#111715; --surface:#19211f; --surface-2:#222c29; --ink:#e3eae7; --muted:#93a29c; --line:#2e3a36;
   --accent:#5fc3ae; --accent-ink:#0c1412; --accent-soft:rgba(95,195,174,.14);
   --warn:#e6a54d; --warn-soft:rgba(230,165,77,.16); --danger:#f07b6b; --danger-soft:rgba(240,123,107,.14);
   --floor:#141b19; --grid:rgba(95,195,174,.09); --frame:#2d3935; --frame-ink:#dde6e2; --frame-in:#1b2321;
+  --board:#2c5a4c; --board-edge:#0f231d; --chalk:#f1f5ec; --door-off:#19211f; --door-off-ink:#a9d3c3; --rail:#3d4b46;
   color-scheme:dark }
 
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
 .shell{max-width:1240px;margin:0 auto;padding-inline:16px;padding-block:18px 48px;display:flex;flex-direction:column;gap:14px}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -33,7 +41,7 @@ a{color:var(--accent)}
 .top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
 .brand svg{flex:none;color:var(--accent)}
-.brand h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+.brand h1{margin:0;font-family:var(--f-sign);font-size:27px;font-weight:400;letter-spacing:-.01em;line-height:1.15;text-wrap:balance}
 .titleinput{font:inherit;color:inherit;letter-spacing:inherit;border:1.5px solid transparent;background:transparent;padding:0 5px;margin-left:-6.5px;border-radius:6px;width:15em;max-width:100%}
 .titleinput:hover,.titleinput:focus{border-color:var(--line);background:var(--surface);outline:none}
 .roomname{border:0;background:transparent;color:var(--muted);padding:0;font-size:13px;width:14em;border-bottom:1px dashed transparent}
@@ -72,12 +80,10 @@ button.stat:hover{border-color:var(--accent)}
 .gate{max-width:520px;margin:40px auto;display:flex;flex-direction:column;gap:14px;text-align:left}
 .gate .panel{padding:24px}
 .gate h2{margin:0;font-size:19px}
-.lockart{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
 
 /* 배치도 */
 .floor-scroll{overflow:auto;padding:4px;border-radius:var(--r)}
 .floor{position:relative;background-color:var(--floor);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:var(--u) var(--u);border:2.5px solid var(--frame);border-radius:4px}
-.scale{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-top:8px;color:var(--muted);font-size:12px}
 .furn{position:absolute;display:flex;align-items:center;justify-content:center;gap:4px;text-align:center;font-size:12px;color:var(--muted);border-radius:5px;background:var(--surface);border:1.5px solid var(--line);cursor:grab;touch-action:none;user-select:none;padding:2px;overflow:hidden}
 .furn.desk{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);font-weight:500}
 .furn.sink{background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 5px,var(--surface-2) 5px,var(--surface-2) 10px)}
@@ -157,11 +163,14 @@ button.stat:hover{border-color:var(--accent)}
 .item .r2{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 .qty button{border:0;background:none;width:26px;height:26px}
-.qty input{width:40px;text-align:center;border:0;background:transparent;font-family:var(--f-mono)}
+.qty input{width:50px;text-align:center;border:0;background:transparent;font-family:var(--f-mono)}
 .field{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:3px 6px;font-size:12px;min-width:0}
 .unit{width:52px}
 .minl{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;color:var(--muted)}
-.minl input{width:44px}
+.minl input{width:48px}
+.minl input[type=date]{width:auto}
+.minl.stack{display:flex;flex-direction:column;align-items:stretch;gap:5px;font-size:12px}
+.minl.stack input{width:100%}
 .linkbtn{border:0;background:none;padding:0;color:var(--accent);font-size:12px;text-decoration:underline;text-underline-offset:3px}
 .safety{border-top:1px dashed var(--line);padding-top:8px;display:flex;flex-direction:column;gap:6px}
 .safety .field{width:100%;font-size:12.5px;padding:5px 7px}
@@ -208,7 +217,7 @@ h2.sec{font-size:16px;margin:20px 0 10px}
 
 /* 설정 */
 .setgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
-.catrow{display:grid;grid-template-columns:36px minmax(0,1fr) 100px auto;gap:8px;align-items:center}
+.catrow{display:grid;grid-template-columns:36px minmax(0,1fr) 124px auto;gap:8px;align-items:center}
 .catrow input[type=color]{width:36px;height:30px;border:1px solid var(--line);border-radius:6px;padding:2px;background:var(--surface)}
 .catrow .field{padding:5px 8px;font-size:13px}
 .person{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
@@ -246,3 +255,67 @@ code{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);paddin
 .lightbox[hidden]{display:none}
 .lightbox .box{background:var(--surface);border-radius:12px;padding:12px;width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;gap:10px;overflow:auto}
 .lightbox img{width:100%;max-height:70vh;object-fit:contain;border-radius:8px;background:#fff;min-height:120px}
+
+/* ── 복도: 천장 레일에 매달린 교실 명패 ── */
+.corridor{overflow-x:auto;margin-inline:-4px;padding:0 4px 12px}
+.corridor[hidden]{display:none}
+.rail{position:relative;display:flex;align-items:flex-start;gap:16px;padding-top:15px;min-width:max-content}
+.rail::before{content:"";position:absolute;left:0;right:0;top:3px;height:3px;border-radius:2px;background:var(--rail)}
+.door{position:relative;display:inline-flex;align-items:center;gap:8px;font-family:var(--f-sign);font-size:19px;line-height:1;padding:10px 18px 9px;border-radius:4px;
+  background:var(--door-off);color:var(--door-off-ink);border:2px solid var(--door-off-ink);white-space:nowrap;transform-origin:50% -12px}
+.door::before,.door::after{content:"";position:absolute;top:-14px;width:2px;height:12px;background:var(--rail)}
+.door::before{left:14px}.door::after{right:14px}
+button.door:hover{background:var(--surface-2)}
+.door.on{background:var(--board);color:var(--chalk);border-color:var(--board);box-shadow:0 3px 0 var(--board-edge)}
+button.door.on:hover{background:var(--board)}
+.door.quiet{opacity:.45}
+.door.add{font-family:var(--f-body);font-size:13px;font-weight:500;padding:11px 14px;border:2px dashed var(--line);color:var(--muted);background:transparent}
+.door.add::before,.door.add::after{display:none}
+.door .badge{position:absolute;right:-9px;bottom:-9px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--danger);color:#fff;font:700 11px/20px var(--f-mono);text-align:center;box-shadow:0 0 0 2px var(--bg)}
+.door .badge.hit{background:var(--accent);color:var(--accent-ink)}
+.door.swing{animation:swing .55s ease-out}
+@keyframes swing{0%{transform:rotate(-5deg)}45%{transform:rotate(2.5deg)}75%{transform:rotate(-1deg)}100%{transform:rotate(0)}}
+@media (prefers-reduced-motion:reduce){.door.swing{animation:none}}
+.door.mini{font-size:15px;padding:6px 11px 5px;box-shadow:none}
+.door.mini::before,.door.mini::after{display:none}
+.addroom{margin-top:14px;max-width:560px}
+.gate-rail{justify-content:center;padding-top:18px;margin-bottom:4px}
+.gate-rail .door{font-size:21px;padding:12px 22px 11px}
+.roomrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.roomrow:last-child{border-bottom:0}
+.roomrow.cur .door.mini{background:var(--board);color:var(--chalk);border-color:var(--board)}
+.roomrow .muted{font-size:12.5px;flex:1 1 120px}
+.roomtools{display:inline-flex;gap:4px;margin-left:auto}
+.seg{display:inline-flex;gap:4px;padding-right:8px;margin-right:4px;border-right:1px solid var(--line)}
+.elsewhere{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.movesel select{padding:5px 8px;font-size:13px}
+
+/* ── 보관장: 라벨기 테이프 이름표, 다리 ── */
+.cabinet{position:relative;margin-bottom:9px}
+.cabinet::before,.cabinet::after{content:"";position:absolute;bottom:-8px;width:20px;height:8px;background:var(--frame);border-radius:0 0 3px 3px}
+.cabinet::before{left:16px}.cabinet::after{right:16px}
+.cabinet .plate{font-family:var(--f-sign);font-size:16px;letter-spacing:0;margin:-3px 0 9px}
+.block .bl{align-self:flex-start;max-width:100%;background:var(--tape);color:var(--tape-ink);padding:2px 7px;border-radius:2px;font-size:13px;letter-spacing:-.01em;box-shadow:0 1px 0 rgba(0,0,0,.22);margin-bottom:3px}
+
+/* ── 배치도: 축척 막대와 도면 표제란 ── */
+.floor{border-width:3px}
+.drawfoot{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:14px;margin-top:10px}
+.scalebar{font-size:11px;color:var(--muted)}
+.sb{display:flex;height:7px;border:1.5px solid var(--frame)}
+.sb i{width:var(--m);flex:none}
+.sb i:nth-child(odd){background:var(--frame)}
+.sbl{display:flex;margin-top:3px;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.sbl span{width:var(--m);flex:none;transform:translateX(-.3em)}
+.sbl span:last-child{width:auto}
+.titleblock{border:1.5px solid var(--frame);background:var(--surface);min-width:0;max-width:100%}
+.tb-name{font-family:var(--f-sign);font-size:19px;line-height:1;padding:8px 12px 7px;border-bottom:1.5px solid var(--frame)}
+.tb-cells{display:flex;flex-wrap:wrap}
+.tb-cells span{padding:5px 12px;font-size:12px;border-right:1px solid var(--line);white-space:nowrap}
+.tb-cells span:last-child{border-right:0}
+.tb-cells i{font-style:normal;color:var(--muted);margin-right:6px}
+
+@media (max-width:640px){
+  .topright{flex-wrap:wrap;justify-content:space-between}
+  .search{order:3;flex:1 1 100%;max-width:none}
+  .brand h1{font-size:24px}
+}
