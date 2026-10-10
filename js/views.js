@@ -5,7 +5,7 @@ import {
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
   fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
   rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope,
-  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES
+  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES, groupOf, isGrouped, groupNo
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
 
@@ -17,6 +17,8 @@ function labelItems(b, max, tag) {
   if (N < 2) return `<${tag}>${esc(b.items.slice(0, max).map(i => i.name).join(', '))}${b.items.length > max ? ` 외 ${b.items.length - max}종` : ''}</${tag}>`;
   return shelfOrder(N).map(n => { const names = b.items.filter(i => shelfNo(b, i) === n).map(i => i.name); return `<${tag} class="lshelf"><b>${n}단</b> ${esc(names.slice(0, 3).join(', ') || '—')}${names.length > 3 ? ` 외 ${names.length - 3}` : ''}</${tag}>`; }).join('');
 }
+const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.8.8M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.8-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+const SEL_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
 const CHEV = '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="m2 2 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const VIEWS = ['room', 'cab', 'list', 'loans', 'stats', 'qr', 'backup', 'set'];
 
@@ -190,6 +192,8 @@ function renderCab() {
   if (!findCab(ui.cab)) ui.cab = list[0].id;
   const cab = findCab(ui.cab), q = ui.q.trim(), conf = conflicts(cab), cids = new Set(conf.flatMap(c => c.ids));
   if (ui.block && !cab.blocks.find(b => b.id === ui.block)) ui.block = null;
+  ui.sel = ui.sel.filter(id => cab.blocks.some(b => b.id === id));
+  const selB = cab.blocks.find(b => b.id === ui.block), selGroup = selB && isGrouped(cab, selB) ? selB.group : '';
   const wide = el.clientWidth >= 880, avail = (wide ? el.clientWidth - 370 : el.clientWidth) - 30;
   const S2 = ui.S = clamp(Math.floor(avail / cab.cols), 52, 120);
   const shrinkC = cab.blocks.every(b => b.c + b.w <= cab.cols - 1) && cab.cols > 1, shrinkR = cab.blocks.every(b => b.r + b.h <= cab.rows - 1) && cab.rows > 1;
@@ -198,6 +202,7 @@ function renderCab() {
   <div class="cabhead"><input id="cab-name" class="name" data-ch="cabName" value="${esc(cab.name)}" aria-label="${T('cab')} 이름">
    <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><b>${cab.cols}</b><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= 8 ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
    <span class="stepper"><span>세로 칸</span><button data-act="cabSize" data-k="rows" data-d="-1" ${shrinkR ? '' : 'disabled'} aria-label="세로 칸 줄이기">−</button><b>${cab.rows}</b><button data-act="cabSize" data-k="rows" data-d="1" ${cab.rows >= 8 ? 'disabled' : ''} aria-label="세로 칸 늘이기">＋</button></span>
+   <button class="btn ghost sm" data-act="multiToggle" aria-pressed="${ui.multi}">${SEL_SVG} ${ui.multi ? '고르는 중' : '여러 블록 고르기'}</button>
    <button class="btn ghost sm" data-act="cabLock" aria-pressed="${!!cab.locked}">${LOCK_SVG} ${cab.locked ? '배치도 위치 잠김' : '배치도 위치 잠그기'}</button>
    ${rooms().length > 1 ? `<label class="minl movesel">놓인 곳<select id="cab-room" class="field" data-ch="cabRoom">${rooms().map(r => `<option value="${r.id}" ${r.id === roomOf(cab) ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('')}</select></label>` : ''}
    ${confirmBtn('cabDel', cab.id, `${T('cab')} 삭제`, '한 번 더 누르면 삭제')}</div>
@@ -211,15 +216,32 @@ function renderCab() {
     const c = cat(b.cat), hz = [...hazardsOf(b)].map(x => HZ[x]).join('·'); let low = 0, ex = 0;
     b.items.forEach(it => { const s = itemStatus(it); if (s.includes('low')) low++; if (s.includes('expired') || s.includes('soon')) ex++; });
     const hit = q && blockMatch(b, q, roomOf(cab)), room = Math.max(0, Math.floor((b.h * S2 - 62) / 16)), N = shelvesOf(b);
-    h += `<div class="block ${ui.block === b.id ? 'sel' : ''} ${cids.has(b.id) ? 'conf' : ''} ${q ? (hit ? 'hit' : 'fade') : ''}" data-drag="block" data-id="${b.id}" role="button" tabindex="0" aria-label="${esc(b.label)} 블록" style="left:${b.c * S2 + 3}px;top:${b.r * S2 + 3}px;width:${b.w * S2 - 6}px;height:${b.h * S2 - 6}px;background:${c.color};color:${ink(c.color)}">
+    const grouped = isGrouped(cab, b), picked = ui.sel.includes(b.id);
+    h += `<div class="block ${ui.block === b.id ? 'sel' : ''} ${picked ? 'picked' : ''} ${grouped && b.group === selGroup && ui.block !== b.id ? 'gsel' : ''} ${cids.has(b.id) ? 'conf' : ''} ${q ? (hit ? 'hit' : 'fade') : ''}" data-drag="block" data-id="${b.id}" role="button" tabindex="0" aria-label="${esc(b.label)} 블록" style="left:${b.c * S2 + 3}px;top:${b.r * S2 + 3}px;width:${b.w * S2 - 6}px;height:${b.h * S2 - 6}px;background:${c.color};color:${ink(c.color)}">
       <div class="bl">${esc(b.label)}</div><div class="bm">${b.items.length}종${N > 1 ? ` · ${N}단` : ''}${hz && safetyOn() ? ' · ' + hz : ''}</div>
       ${N > 1 ? `<div class="shelves" style="--sh:${N}">${shelfOrder(N).map(n => { const names = b.items.filter(i => shelfNo(b, i) === n).map(i => i.name); return `<div class="shelf"><i>${n}</i><span>${esc(names.join(', '))}</span></div>`; }).join('')}</div>` : b.items.slice(0, room).map(it => `<div class="bn">${esc(it.name)}</div>`).join('')}
-      <div class="flags ${N > 1 ? 'abs' : ''}">${low ? `<span class="f low">부족 ${low}</span>` : ''}${ex ? `<span class="f exp">기한 ${ex}</span>` : ''}${cids.has(b.id) ? '<span class="f cf">보관 주의</span>' : ''}</div></div>`;
+      ${picked ? '<i class="pickmark" aria-hidden="true">✓</i>' : ''}
+      <div class="flags ${N > 1 ? 'abs' : ''}">${grouped ? `<span class="f grp">${LINK_SVG}묶음 ${groupNo(cab, b.group)}</span>` : ''}${low ? `<span class="f low">부족 ${low}</span>` : ''}${ex ? `<span class="f exp">기한 ${ex}</span>` : ''}${cids.has(b.id) ? '<span class="f cf">보관 주의</span>' : ''}</div></div>`;
   });
   h += `</div></div></div>`;
   if (conf.length) h += `<div class="warns" id="warns">${conf.map(c => `<div class="warn-row"><b>!</b><span><b>${esc(c.where)}</b> — ${esc(c.msg)}</span></div>`).join('')}</div>`;
-  h += `</div>${ui.block ? blockPanel(cab, cab.blocks.find(b => b.id === ui.block)) : idlePanel()}</div>`;
+  h += `</div>${ui.multi || ui.sel.length ? multiPanel(cab) : ui.block ? blockPanel(cab, cab.blocks.find(b => b.id === ui.block)) : idlePanel()}</div>`;
   el.innerHTML = h;
+}
+/* 여러 블록 고르기 패널: 고른 블록을 묶거나 함께 옮겨요 */
+function multiPanel(cab) {
+  const picked = cab.blocks.filter(b => ui.sel.includes(b.id));
+  const sameGroup = picked.length > 1 && picked[0].group && picked.every(b => b.group === picked[0].group) && groupOf(cab, picked[0]).length === picked.length;
+  const anyGrouped = picked.some(b => isGrouped(cab, b));
+  return `<aside class="panel"><h3>블록 ${picked.length}개 골랐어요</h3>
+  <p class="help">블록을 누를 때마다 고르거나 빼요. 고른 블록 중 하나를 끌면 함께 옮겨져요.${picked.length < 2 ? ' 묶으려면 2개 이상 골라 주세요.' : ''}</p>
+  ${picked.length ? `<div class="chips">${picked.map(b => `<span class="chip"><i class="sw" style="background:${cat(b.cat).color}"></i>${esc(b.label)}</span>`).join('')}</div>` : ''}
+  <div class="sizes">
+    <button class="btn" data-act="groupSel" ${picked.length > 1 && !sameGroup ? '' : 'disabled'}>${LINK_SVG} 묶기</button>
+    ${anyGrouped ? `<button class="btn ghost" data-act="ungroupSel">묶음 풀기</button>` : ''}
+    <button class="btn ghost" data-act="multiDone">고르기 끝내기</button>
+  </div>
+  <p class="help" style="font-size:12px">묶은 블록은 고르기를 끝낸 뒤에도 하나를 끌면 함께 움직여요. 컴퓨터에서는 Shift 키를 누른 채 블록을 눌러도 여러 개를 고를 수 있어요.</p></aside>`;
 }
 function idlePanel() {
   return `<aside class="panel"><h3>블록 붙이기</h3><div class="lbl">새 블록의 분류</div>
@@ -232,6 +254,7 @@ function blockPanel(cab, b) {
   <div class="ph"><i class="sw" style="background:${c.color};width:18px;height:18px"></i><input id="blk-label" data-ch="blkLabel" value="${esc(b.label)}" aria-label="블록 이름"><button class="x" data-act="closeBlk" aria-label="닫기">×</button></div>
   <div class="lbl">분류 · 블록 색</div>
   <div class="chips">${M().categories.map(x => `<button class="chip" data-act="blkCat" data-id="${x.id}" aria-pressed="${b.cat === x.id}"><i class="sw" style="background:${x.color}"></i>${esc(x.name)}</button>`).join('')}</div>
+  ${isGrouped(cab, b) ? `<div class="grprow">${LINK_SVG}<span><b>묶음 ${groupNo(cab, b.group)}</b> · 블록 ${groupOf(cab, b).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroup" data-id="${b.group}">묶음 풀기</button></div>` : ''}
   <div class="lbl">크기 (칸)</div>
   <div class="sizes"><span class="stepper"><span>가로</span><button data-act="blkSize" data-k="w" data-d="-1" ${b.w > 1 ? '' : 'disabled'} aria-label="가로 줄이기">−</button><b>${b.w}</b><button data-act="blkSize" data-k="w" data-d="1" ${can(1, 0) ? '' : 'disabled'} aria-label="가로 늘이기">＋</button></span>
   <span class="stepper"><span>세로</span><button data-act="blkSize" data-k="h" data-d="-1" ${b.h > 1 ? '' : 'disabled'} aria-label="세로 줄이기">−</button><b>${b.h}</b><button data-act="blkSize" data-k="h" data-d="1" ${can(0, 1) ? '' : 'disabled'} aria-label="세로 늘이기">＋</button></span>

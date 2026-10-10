@@ -55,7 +55,7 @@ export const ui = {
   phase: 'boot', view: 'room', cab: null, block: null, furn: null, q: '', filter: 'all', confirm: null, newCat: 'c_reag',
   U: 30, S: 100, openItem: null, loanItem: '', year: String(new Date().getFullYear()), qrCab: 'all',
   reqErr: '', hashDone: false, deferred: false, cmp: null, autoBackupDone: false, pruned: false, photo: null,
-  room: savedRoom, scope: 'room', addingRoom: false, newShelf: 1, newRoomKind: 'science', swing: null, migrated: false
+  room: savedRoom, scope: 'room', addingRoom: false, newShelf: 1, multi: false, sel: [], newRoomKind: 'science', swing: null, migrated: false
 };
 
 let toastT;
@@ -128,7 +128,7 @@ export function curRoom() {
   return r;
 }
 export function setRoom(id) {
-  if (ui.room !== id) { ui.swing = id; ui.cab = ui.block = ui.furn = null; ui.qrCab = 'all'; }
+  if (ui.room !== id) { ui.swing = id; ui.cab = ui.block = ui.furn = null; ui.qrCab = 'all'; ui.multi = false; ui.sel = []; }
   ui.room = id; try { localStorage.setItem(ROOM_KEY, id); } catch (e) { }
   const r = curRoom(); if (r && !r.categories.some(c => c.id === ui.newCat)) ui.newCat = (r.categories[0] || {}).id || '';
 }
@@ -292,7 +292,7 @@ export function normalize(d) {
   cabs = cabs.map((c, i) => ({
     id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
     blocks: (c.blocks || []).map(b => ({
-      id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '', shelves: shelvesOf(b),
+      id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '', shelves: shelvesOf(b), group: b.group || '',
       items: (b.items || []).map(it => clone({ ...newItem(it.name || '물품'), ...it, ghs: it.ghs || [] }))
     }))
   }));
@@ -312,7 +312,11 @@ export function toTrash(type, data, from) {
   const t = { id, type, data: clone(data), from: from || {}, at: Date.now(), by: S.auth.uid, byName: byName() };
   S.trash[id] = t; put('trash/' + id, clone(t)); return id;
 }
-export const blockShape = b => ({ id: b.id, c: b.c, r: b.r, w: b.w, h: b.h, label: b.label, cat: b.cat, shelves: shelvesOf(b) });
+export const blockShape = b => ({ id: b.id, c: b.c, r: b.r, w: b.w, h: b.h, label: b.label, cat: b.cat, shelves: shelvesOf(b), group: b.group || '' });
+/* 묶음: 같은 group 값을 가진 블록 (2개 이상일 때만 묶음으로 봐요) */
+export const groupOf = (cab, b) => b && b.group ? cab.blocks.filter(x => x.group === b.group) : [];
+export const isGrouped = (cab, b) => groupOf(cab, b).length > 1;
+export function groupNo(cab, gid) { const seen = []; cab.blocks.forEach(x => { if (x.group && !seen.includes(x.group) && cab.blocks.filter(y => y.group === x.group).length > 1) seen.push(x.group); }); return seen.indexOf(gid) + 1; }
 export function fmtTime(ms) { const d = new Date(ms); return `${ymd(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 export function flatItems(cabs) { const m = {}; cabs.forEach(c => c.blocks.forEach(b => b.items.forEach(it => { m[it.id] = { cab: c, b, it }; }))); return m; }
 export function backupDiff(data) {

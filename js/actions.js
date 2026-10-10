@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, groupOf, isGrouped,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -53,7 +53,7 @@ const validEmail = v => /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(v);
 const ACT = {
   login: async () => { ui.reqErr = ''; try { await login(); } catch (e) { if (e && e.code === 'auth/popup-closed-by-user') return; ui.reqErr = e && e.code === 'auth/unauthorized-domain' ? '이 주소가 Firebase 승인 도메인에 없어요. SETUP.md 3단계를 확인해 주세요.' : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'; render(); } },
   logout: () => logout(),
-  tab: t => { ui.view = t.dataset.view; render(); },
+  tab: t => { ui.view = t.dataset.view; ui.multi = false; ui.sel = []; render(); },
   goFilter: t => { ui.view = 'list'; ui.filter = t.dataset.f; render(); },
   goWarn: () => { const c = cabList().find(c => conflicts(c).length); if (!c) { toast('보관 경고가 없어요'); return; } ui.view = 'cab'; ui.cab = c.id; ui.block = null; render(); const w = $('#warns'); if (w) w.scrollIntoView({ block: 'nearest' }); },
   filter: t => { ui.filter = t.dataset.f; render(); },
@@ -93,7 +93,20 @@ const ACT = {
   furnClose: () => { ui.furn = null; render(); },
   toggleLayoutLock: () => { M().layoutLocked = !M().layoutLocked; saveMeta(); render(); toast(M().layoutLocked ? `배치를 잠갔어요. ${j(T('cab'), '과/와')} 가구를 옮길 수 없어요.` : '배치 잠금을 풀었어요'); },
   cabLock: () => { const c = findCab(ui.cab); c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `배치도에서 이 ${T('cab')} 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
-  pickCab: t => { ui.cab = t.dataset.id; ui.block = null; render(); },
+  pickCab: t => { ui.cab = t.dataset.id; ui.block = null; ui.multi = false; ui.sel = []; render(); },
+  multiToggle: () => { ui.multi = !ui.multi; ui.sel = ui.multi && ui.block ? [ui.block] : []; ui.block = null; render(); },
+  multiDone: () => { ui.multi = false; ui.sel = []; render(); },
+  groupSel: () => {
+    const cab = findCab(ui.cab), picked = cab.blocks.filter(b => ui.sel.includes(b.id)); if (picked.length < 2) return;
+    const gid = 'g' + uid(); picked.forEach(b => { b.group = gid; }); saveCab(cab.id);
+    ui.multi = false; ui.sel = []; ui.block = picked[0].id; render();
+    toast(`블록 ${picked.length}개를 묶었어요. 하나를 끌면 함께 옮겨져요.`);
+  },
+  ungroupSel: () => {
+    const cab = findCab(ui.cab), gids = new Set(cab.blocks.filter(b => ui.sel.includes(b.id) && b.group).map(b => b.group));
+    cab.blocks.forEach(b => { if (gids.has(b.group)) b.group = ''; }); saveCab(cab.id); render(); toast('묶음을 풀었어요');
+  },
+  ungroup: t => { const cab = findCab(ui.cab); cab.blocks.forEach(b => { if (b.group === t.dataset.id) b.group = ''; }); saveCab(cab.id); render(); toast('묶음을 풀었어요. 이제 블록이 따로 움직여요.'); },
   cabSize: t => {
     const cab = findCab(ui.cab), k = t.dataset.k, v = cab[k] + +t.dataset.d; if (v < 1 || v > 8) return;
     if (+t.dataset.d < 0 && !cab.blocks.every(b => k === 'cols' ? b.c + b.w <= v : b.r + b.h <= v)) { toast('끝 칸에 블록이 있어 줄일 수 없어요'); return; }
@@ -259,15 +272,29 @@ function startDrag(e) {
   const t = e.target.closest('[data-drag]'); if (!t || e.button > 0) return;
   const kind = t.dataset.drag, id = t.dataset.id, sx = e.clientX, sy = e.clientY; let moved = false, mv, done;
   if (kind === 'block') {
-    const { cab, b } = findBlock(id); if (!b) return; const S2 = ui.S; let nc = b.c, nr = b.r, ok = true;
+    const { cab, b } = findBlock(id); if (!b) return; const S2 = ui.S, shift = e.shiftKey;
+    // 함께 옮길 블록: 고른 블록들 → 묶음 → 이 블록 하나
+    const set = ui.sel.length > 1 && ui.sel.includes(id) ? cab.blocks.filter(x => ui.sel.includes(x.id)) : isGrouped(cab, b) ? groupOf(cab, b) : [b];
+    const ids = new Set(set.map(x => x.id)), els = set.map(x => document.querySelector(`.block[data-id="${x.id}"]`)).filter(Boolean);
+    const minC = -Math.min(...set.map(x => x.c)), maxC = cab.cols - Math.max(...set.map(x => x.c + x.w));
+    const minR = -Math.min(...set.map(x => x.r)), maxR = cab.rows - Math.max(...set.map(x => x.r + x.h));
+    const hits = (x, c, r) => cab.blocks.some(o => !ids.has(o.id) && c < o.c + o.w && o.c < c + x.w && r < o.r + o.h && o.r < r + x.h);
+    let dc = 0, dr = 0, ok = true;
     mv = ev => {
-      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return; moved = true; t.classList.add('dragging');
-      nc = clamp(Math.round(b.c + (ev.clientX - sx) / S2), 0, cab.cols - b.w); nr = clamp(Math.round(b.r + (ev.clientY - sy) / S2), 0, cab.rows - b.h);
-      ok = canPlace(cab, b, nc, nr, b.w, b.h); t.style.left = nc * S2 + 3 + 'px'; t.style.top = nr * S2 + 3 + 'px'; t.classList.toggle('bad', !ok);
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return; moved = true;
+      dc = clamp(Math.round((ev.clientX - sx) / S2), minC, maxC); dr = clamp(Math.round((ev.clientY - sy) / S2), minR, maxR);
+      ok = !set.some(x => hits(x, x.c + dc, x.r + dr));
+      set.forEach((x, i) => { const el = els[i]; if (!el) return; el.classList.add('dragging'); el.style.left = (x.c + dc) * S2 + 3 + 'px'; el.style.top = (x.r + dr) * S2 + 3 + 'px'; el.classList.toggle('bad', !ok); });
     };
     done = () => {
-      if (moved) { if (ok && (nc !== b.c || nr !== b.r)) { b.c = nc; b.r = nr; ui.block = b.id; saveCab(cab.id); } else if (!ok) toast('다른 블록과 겹쳐서 옮기지 않았어요'); render(); }
-      else { ui.block = ui.block === id ? null : id; render(); }
+      if (moved) {
+        if (ok && (dc || dr)) { set.forEach(x => { x.c += dc; x.r += dr; }); if (!ui.multi && !ui.sel.length) ui.block = b.id; saveCab(cab.id); if (set.length > 1) toast(`블록 ${set.length}개를 함께 옮겼어요`); }
+        else if (!ok) toast('다른 블록과 겹쳐서 옮기지 않았어요');
+        render();
+      } else if (ui.multi || shift) {
+        if (!ui.multi) { ui.multi = true; if (ui.block && ui.block !== id) ui.sel = [ui.block]; ui.block = null; }
+        ui.sel = ui.sel.includes(id) ? ui.sel.filter(x => x !== id) : [...ui.sel, id]; render();
+      } else { ui.block = ui.block === id ? null : id; render(); }
     };
   } else {
     const isCab = kind === 'cab', obj = isCab ? findCab(id) : M().furniture.find(f => f.id === id); if (!obj) return;
@@ -300,7 +327,8 @@ export function installHandlers() {
     if (e.key === 'Enter' && e.target.id === 'invite-email') { e.preventDefault(); ACT.invite(); return; }
     if (e.key === 'Enter' && e.target.id === 'newroom-name') { e.preventDefault(); ACT.addRoom(); return; }
     if (e.key === 'Escape' && ui.addingRoom) { ui.addingRoom = false; render(); return; }
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('block')) { e.preventDefault(); ui.block = e.target.dataset.id; render(); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('block')) { e.preventDefault(); const id = e.target.dataset.id; if (ui.multi) ui.sel = ui.sel.includes(id) ? ui.sel.filter(x => x !== id) : [...ui.sel, id]; else ui.block = id; render(); }
+    if (e.key === 'Escape' && (ui.multi || ui.sel.length)) { ui.multi = false; ui.sel = []; render(); return; }
   });
   document.addEventListener('change', e => {
     if (e.target.dataset && e.target.dataset.photoUp) {
