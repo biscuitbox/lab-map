@@ -189,7 +189,11 @@ function lin(v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055)
 export function ink(hex) { const n = parseInt(String(hex).replace('#', ''), 16); if (isNaN(n)) return '#111'; const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255); return L > .33 ? '#141a18' : '#ffffff'; }
 export const snap = v => Math.round(v * 2) / 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-export const cabFoot = cab => ({ w: snap(cab.cols * 1.6 + .4), h: snap(cab.rows * 1.1 + 1.1) });
+/* 보관장 칸 수 한도 */
+export const MAX_CELLS = 20;
+/* 배치도에서 보관장이 차지하는 크기(바닥 격자 칸). 직접 정했으면(fw, fh) 그 값, 아니면 칸 수로 계산하되 8칸 크기에서 더 커지지 않아요 */
+export const cabFootAuto = cab => ({ w: snap(Math.min(cab.cols, 8) * 1.6 + .4), h: snap(Math.min(cab.rows, 8) * 1.1 + 1.1) });
+export const cabFoot = cab => cab.fw && cab.fh ? { w: cab.fw, h: cab.fh } : cabFootAuto(cab);
 
 export const myEmail = () => (S.auth && S.auth.email || '').toLowerCase();
 export const isCfgAdmin = () => ADMIN_EMAILS.map(e => e.toLowerCase()).includes(myEmail());
@@ -290,7 +294,7 @@ export function normalize(d) {
   const rids = new Set(meta.rooms.map(r => r.id)), first = meta.rooms[0].id;
   const sid = v => String(v || '').replace(/[^A-Za-z0-9]/g, '') || uid();
   cabs = cabs.map((c, i) => ({
-    id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, group: c.group || '', name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
+    id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, group: c.group || '', ...(c.fw && c.fh ? { fw: c.fw, fh: c.fh } : {}), name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
     blocks: (c.blocks || []).map(b => ({
       id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '', shelves: shelvesOf(b), group: b.group || '',
       items: (b.items || []).map(it => clone({ ...newItem(it.name || '물품'), ...it, ghs: it.ghs || [] }))

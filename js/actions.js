@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, MAX_CELLS, cabFootAuto, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -163,8 +163,17 @@ const ACT = {
     cab.blocks.forEach(b => { if (gids.has(b.group)) b.group = ''; }); saveCab(cab.id); render(); toast('묶음을 풀었어요');
   },
   ungroup: t => { const cab = findCab(ui.cab); cab.blocks.forEach(b => { if (b.group === t.dataset.id) b.group = ''; }); saveCab(cab.id); render(); toast('묶음을 풀었어요. 이제 블록이 따로 움직여요.'); },
+  /* 배치도에서 보관장이 차지하는 크기 (격자 칸, 0.5칸 단위) */
+  cabFloor: t => {
+    const cab = findCab(ui.cab), R = M().room; if (!cab) return;
+    const cur = cabFoot(cab), k = t.dataset.k, lim = k === 'w' ? R.w : R.h, want = snap(cur[k] + +t.dataset.d), v = clamp(want, 2, lim);
+    if (want !== v) toast(`배치도 크기는 2칸부터 바닥 크기(${lim}칸)까지 정할 수 있어요`);
+    cab.fw = k === 'w' ? v : cur.w; cab.fh = k === 'h' ? v : cur.h;
+    cab.x = clamp(cab.x, 0, Math.max(0, R.w - cab.fw)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - cab.fh)); saveCab(cab.id); render();
+  },
+  cabFloorAuto: () => { const cab = findCab(ui.cab); if (!cab) return; delete cab.fw; delete cab.fh; const ft = cabFoot(cab), R = M().room; cab.x = clamp(cab.x, 0, Math.max(0, R.w - ft.w)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - ft.h)); saveCab(cab.id); render(); toast('배치도 크기를 칸 수에 맞춰 되돌렸어요'); },
   cabSize: t => {
-    const cab = findCab(ui.cab), k = t.dataset.k, v = cab[k] + +t.dataset.d; if (v < 1 || v > 8) { toast('가로·세로 칸은 1~8칸까지 정할 수 있어요'); return; }
+    const cab = findCab(ui.cab), k = t.dataset.k, v = cab[k] + +t.dataset.d; if (v < 1 || v > MAX_CELLS) { toast(`가로·세로 칸은 1~${MAX_CELLS}칸까지 정할 수 있어요`); render(); return; }
     if (+t.dataset.d < 0 && !cab.blocks.every(b => k === 'cols' ? b.c + b.w <= v : b.r + b.h <= v)) { toast('끝 칸에 블록이 있어 줄일 수 없어요'); return; }
     cab[k] = v; const ft = cabFoot(cab), R = M().room; cab.x = clamp(cab.x, 0, Math.max(0, R.w - ft.w)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - ft.h)); saveCab(cab.id); render();
   },
@@ -315,7 +324,7 @@ const CH = {
   itCat: itemCh((it, t) => it.cat = t.value),
   clipItems: t => { ui.clipItems = t.checked; },
   // 크기 칸에 숫자를 직접 적으면, 지금 값과의 차이만큼 −/＋ 단추와 같은 규칙으로 바꿔요
-  stepSet: t => { const raw = parseFloat(t.value), v = t.dataset.a === 'furnSize' ? Math.round(raw * 2) / 2 : Math.round(raw), cur = +t.dataset.cur; if (!isFinite(v)) { toast('숫자를 적어 주세요'); return; } if (v === cur) return; ACT[t.dataset.a]({ dataset: { k: t.dataset.k, d: String(v - cur) } }); },
+  stepSet: t => { const raw = parseFloat(t.value), v = ['furnSize', 'cabFloor'].includes(t.dataset.a) ? Math.round(raw * 2) / 2 : Math.round(raw), cur = +t.dataset.cur; if (!isFinite(v)) { toast('숫자를 적어 주세요'); return; } if (v === cur) return; ACT[t.dataset.a]({ dataset: { k: t.dataset.k, d: String(v - cur) } }); },
   itShelf: itemCh((it, t) => it.shelf = Math.max(1, +t.value || 1)),
   itCas: itemCh((it, t) => it.cas = t.value.trim()),
   itMsds: itemCh((it, t) => { const v = t.value.trim(); it.msds = /^https?:\/\//i.test(v) ? v : (v ? 'https://' + v : ''); }),
