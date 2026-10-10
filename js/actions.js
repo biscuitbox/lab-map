@@ -47,6 +47,25 @@ function addCab() {
 }
 /* 배치도에서 바뀐 보관장은 각각, 가구는 특별실 설정 한 번에 저장 */
 function saveFloor(list) { list.filter(x => x.cab).forEach(x => saveCab(x.o.id)); if (list.some(x => !x.cab)) saveMeta(); }
+/* 복사·붙여넣기: 붙여 넣을 때마다 새 id를 만들어요. 물품은 '물품도 함께'를 고를 때만 복사해요 */
+function cloneBlocks(list, withItems) {
+  const gmap = {};
+  return clone(list).map(b => ({
+    ...b, id: uid(), group: b.group ? (gmap[b.group] || (gmap[b.group] = 'g' + uid())) : '',
+    items: withItems ? b.items.map(it => ({ ...it, id: uid(), photoAt: '' })) : []
+  }));
+}
+function pasteBlocks(cab, c, r) {
+  const src = ui.clip.data, minC = Math.min(...src.map(b => b.c)), minR = Math.min(...src.map(b => b.r));
+  const nb = cloneBlocks(src, ui.clipItems).map(b => ({ ...b, c: c + b.c - minC, r: r + b.r - minR }));
+  const fits = nb.every(b => canPlace(cab, b, b.c, b.r, b.w, b.h));
+  if (!fits) return null;
+  cab.blocks.push(...nb); saveCab(cab.id);
+  ui.multi = false; ui.sel = []; ui.block = nb.length === 1 ? nb[0].id : null; render();
+  const ids = new Set(nb.map(b => b.id));
+  toast(`블록 ${nb.length}개를 붙여 넣었어요${ui.clipItems ? ' (물품 포함)' : ''}`, { label: '되돌리기', fn: () => { const now = S.cabs[cab.id]; if (!now) return; now.blocks = now.blocks.filter(b => !ids.has(b.id)); ui.block = null; saveCab(now.id); render(); toast('붙여넣기를 되돌렸어요'); } });
+  return nb;
+}
 function undoable(msg, tid) { toast(msg, { label: '되돌리기', fn: () => { const r = restoreTrash(tid); render(); toast(r.msg); } }); }
 function needConfirm(k) { if (ui.confirm === k) { ui.confirm = null; return false; } ui.confirm = k; render(); return true; }
 const profileOf = () => ({ email: myEmail(), name: S.auth.displayName || '', photo: S.auth.photoURL || '' });
@@ -84,6 +103,30 @@ const ACT = {
     S.meta.rooms = S.meta.rooms.filter(x => x.id !== r.id); saveMeta(); setRoom(rooms()[0].id); render(); toast(`${j(`‘${r.roomName}’`, '을/를')} 지웠어요`);
   },
   addCab,
+  copyBlocks: t => {
+    const cab = findCab(ui.cab), ids = t.dataset.id ? [t.dataset.id] : ui.sel;
+    const list = cab.blocks.filter(b => ids.includes(b.id)); if (!list.length) return;
+    ui.clip = { type: 'blocks', data: clone(list) }; ui.multi = false; ui.sel = []; ui.block = null; render();
+    toast(`블록 ${list.length}개를 복사했어요. 점선 칸을 눌러 붙여 넣으세요. 다른 ${T('cab')}에도 붙일 수 있어요.`);
+  },
+  copyCab: () => { const cab = findCab(ui.cab); if (!cab) return; ui.clip = { type: 'cab', data: clone(cab) }; render(); toast(`${j(`‘${cab.name}’`, '을/를')} 복사했어요. 이 줄의 ‘붙여넣기’를 누르세요. 다른 특별실에도 붙일 수 있어요.`); },
+  clipClear: () => { ui.clip = null; render(); },
+  pasteBlocksAt: t => { const cab = findCab(ui.cab); if (!cab || !ui.clip) return; if (!pasteBlocks(cab, +t.dataset.c, +t.dataset.r)) toast('그 자리에는 들어가지 않아요. 왼쪽 위 기준으로 빈 칸이 충분한 곳을 눌러 주세요.'); },
+  pasteBlocksAuto: () => {
+    const cab = findCab(ui.cab); if (!cab || !ui.clip) return;
+    for (let r = 0; r < cab.rows; r++) for (let c = 0; c < cab.cols; c++) if (pasteBlocks(cab, c, r)) return;
+    toast(`이 ${T('cab')}에는 들어갈 빈 곳이 없어요. 칸을 늘리거나 다른 ${j(T('cab'), '을/를')} 골라 주세요.`);
+  },
+  pasteCab: () => {
+    if (!ui.clip || ui.clip.type !== 'cab') return;
+    const src = ui.clip.data, room = M(), same = src.roomId === room.id;
+    const names = new Set(cabList().map(c => c.name)); let name = same ? `${src.name} 복사본` : src.name, n = 2;
+    while (names.has(name)) name = `${src.name} 복사본 ${n++}`;
+    const cab = { ...clone(src), id: uid(), roomId: room.id, name, group: '', locked: false, order: Date.now(), blocks: cloneBlocks(src.blocks, ui.clipItems) };
+    const ft = cabFoot(cab); cab.x = clamp(src.x + (same ? 1 : 0), 0, Math.max(0, room.room.w - ft.w)); cab.y = clamp(src.y + (same ? 1 : 0), 0, Math.max(0, room.room.h - ft.h));
+    S.cabs[cab.id] = cab; saveCab(cab.id); ui.cab = cab.id; ui.block = null; render();
+    toast(`${j(`‘${name}’`, '을/를')} 붙여 넣었어요${ui.clipItems ? ' (물품 포함)' : ''}. 배치도에서 자리를 잡아 주세요.`, { label: '되돌리기', fn: () => { delete S.cabs[cab.id]; saveCab(cab.id); ui.cab = null; render(); toast('붙여넣기를 되돌렸어요'); } });
+  },
   addFurn: t => {
     const d = FURN[t.dataset.type], R = M().room, n = M().furniture.filter(f => f.type === t.dataset.type).length;
     const f = { id: uid(), type: t.dataset.type, label: t.dataset.type === 'bench' ? (T('bench') === '실험대' ? `${n + 1}모둠` : `${T('bench')} ${n + 1}`) : T(t.dataset.type), x: clamp(snap(R.w / 2 - d.w / 2), 0, R.w - d.w), y: clamp(snap(R.h / 2 - d.h / 2), 0, R.h - d.h), w: d.w, h: d.h, locked: false };
@@ -121,7 +164,7 @@ const ACT = {
   },
   ungroup: t => { const cab = findCab(ui.cab); cab.blocks.forEach(b => { if (b.group === t.dataset.id) b.group = ''; }); saveCab(cab.id); render(); toast('묶음을 풀었어요. 이제 블록이 따로 움직여요.'); },
   cabSize: t => {
-    const cab = findCab(ui.cab), k = t.dataset.k, v = cab[k] + +t.dataset.d; if (v < 1 || v > 8) return;
+    const cab = findCab(ui.cab), k = t.dataset.k, v = cab[k] + +t.dataset.d; if (v < 1 || v > 8) { toast('가로·세로 칸은 1~8칸까지 정할 수 있어요'); return; }
     if (+t.dataset.d < 0 && !cab.blocks.every(b => k === 'cols' ? b.c + b.w <= v : b.r + b.h <= v)) { toast('끝 칸에 블록이 있어 줄일 수 없어요'); return; }
     cab[k] = v; const ft = cabFoot(cab), R = M().room; cab.x = clamp(cab.x, 0, Math.max(0, R.w - ft.w)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - ft.h)); saveCab(cab.id); render();
   },
@@ -134,9 +177,10 @@ const ACT = {
   },
   closeBlk: () => { ui.block = null; render(); },
   blkCat: t => { const { cab, b } = findBlock(ui.block); const old = cat(b.cat).name; b.cat = t.dataset.id; if (b.label === old) b.label = cat(b.cat).name; ui.newCat = b.cat; saveCab(cab.id); render(); },
-  blkSize: t => { const { cab, b } = findBlock(ui.block), k = t.dataset.k, d = +t.dataset.d, w = b.w + (k === 'w' ? d : 0), h = b.h + (k === 'h' ? d : 0); if (canPlace(cab, b, b.c, b.r, w, h)) { b.w = w; b.h = h; saveCab(cab.id); render(); } },
+  blkSize: t => { const { cab, b } = findBlock(ui.block), k = t.dataset.k, d = +t.dataset.d, w = b.w + (k === 'w' ? d : 0), h = b.h + (k === 'h' ? d : 0); if (canPlace(cab, b, b.c, b.r, w, h)) { b.w = w; b.h = h; saveCab(cab.id); render(); } else { toast(w < 1 || h < 1 ? '블록은 1칸보다 작게 할 수 없어요' : '그 크기로는 다른 블록과 겹치거나 실험장 밖으로 나가요'); render(); } },
   blkShelves: t => {
-    const { cab, b } = findBlock(ui.block), N = Math.max(1, Math.min(MAX_SHELVES, shelvesOf(b) + +t.dataset.d)); if (N === shelvesOf(b)) return;
+    const { cab, b } = findBlock(ui.block), want = shelvesOf(b) + +t.dataset.d, N = Math.max(1, Math.min(MAX_SHELVES, want));
+    if (want !== N) toast(`칸 안의 단은 1~${MAX_SHELVES}단까지 나눌 수 있어요`); if (N === shelvesOf(b)) { render(); return; }
     // 물품의 단 번호는 그대로 두어요. 단을 줄이면 위쪽 물품은 맨 위 단에 함께 보이고, 다시 늘리면 원래 단으로 돌아가요
     const above = b.items.filter(it => (+it.shelf || 1) > N).length;
     b.shelves = N; saveCab(cab.id); render();
@@ -189,7 +233,7 @@ const ACT = {
     if (ui.newCat === id) ui.newCat = fb; saveMeta(); render();
   },
   roomSize: t => {
-    const k = t.dataset.k, R = M().room; R[k] = clamp(R[k] + +t.dataset.d, 10, 48);
+    const k = t.dataset.k, R = M().room; { const want = R[k] + +t.dataset.d; R[k] = clamp(want, 10, 48); if (want !== R[k]) toast('바닥은 가로·세로 10~48칸(5~24 m)까지 정할 수 있어요'); }
     cabList().forEach(c => { const ft = cabFoot(c), x = clamp(c.x, 0, Math.max(0, R.w - ft.w)), y = clamp(c.y, 0, Math.max(0, R.h - ft.h)); if (x !== c.x || y !== c.y) { c.x = x; c.y = y; saveCab(c.id); } });
     M().furniture.forEach(f => { f.x = clamp(f.x, 0, Math.max(0, R.w - f.w)); f.y = clamp(f.y, 0, Math.max(0, R.h - f.h)); });
     saveMeta(); render();
@@ -269,6 +313,9 @@ const CH = {
   itMin: itemCh((it, t) => it.min = t.value === '' ? '' : Math.max(0, parseInt(t.value) || 0)),
   itExp: itemCh((it, t) => it.expiry = t.value),
   itCat: itemCh((it, t) => it.cat = t.value),
+  clipItems: t => { ui.clipItems = t.checked; },
+  // 크기 칸에 숫자를 직접 적으면, 지금 값과의 차이만큼 −/＋ 단추와 같은 규칙으로 바꿔요
+  stepSet: t => { const raw = parseFloat(t.value), v = t.dataset.a === 'furnSize' ? Math.round(raw * 2) / 2 : Math.round(raw), cur = +t.dataset.cur; if (!isFinite(v)) { toast('숫자를 적어 주세요'); return; } if (v === cur) return; ACT[t.dataset.a]({ dataset: { k: t.dataset.k, d: String(v - cur) } }); },
   itShelf: itemCh((it, t) => it.shelf = Math.max(1, +t.value || 1)),
   itCas: itemCh((it, t) => it.cas = t.value.trim()),
   itMsds: itemCh((it, t) => { const v = t.value.trim(); it.msds = /^https?:\/\//i.test(v) ? v : (v ? 'https://' + v : ''); }),
@@ -349,11 +396,27 @@ export function installHandlers() {
   });
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && ui.photo) { ui.photo = null; render(); return; }
+    // 크기 칸: Enter로 바로 적용
+    if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('stepnum')) { e.preventDefault(); e.target.blur(); return; }
+    // Ctrl(⌘)+C / V: 입력 칸 밖에서만. 조립 화면은 블록, 배치도는 보관장
+    const typing = e.target.matches && e.target.matches('input,textarea,select');
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !typing && ui.phase === 'ready') {
+      const k = e.key.toLowerCase();
+      if (k === 'c' && ui.view === 'cab' && (ui.sel.length || ui.block)) { e.preventDefault(); ACT.copyBlocks({ dataset: ui.sel.length ? {} : { id: ui.block } }); return; }
+      if (k === 'c' && ui.view === 'cab' && findCab(ui.cab)) { e.preventDefault(); ACT.copyCab(); return; }
+      if (k === 'v' && ui.clip) {
+        e.preventDefault();
+        if (ui.clip.type === 'cab') { ACT.pasteCab(); return; }
+        if (ui.view === 'cab' && findCab(ui.cab)) { ACT.pasteBlocksAuto(); return; }
+        toast(`블록은 ${T('cab')} 조립 화면에서 붙여 넣을 수 있어요`); return;
+      }
+    }
     if (e.key === 'Enter' && e.target.id === 'new-item') { e.preventDefault(); ACT.addItem(); return; }
     if (e.key === 'Enter' && e.target.id === 'invite-email') { e.preventDefault(); ACT.invite(); return; }
     if (e.key === 'Enter' && e.target.id === 'newroom-name') { e.preventDefault(); ACT.addRoom(); return; }
     if (e.key === 'Escape' && ui.addingRoom) { ui.addingRoom = false; render(); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('block')) { e.preventDefault(); const id = e.target.dataset.id; if (ui.multi) ui.sel = ui.sel.includes(id) ? ui.sel.filter(x => x !== id) : [...ui.sel, id]; else ui.block = id; render(); }
+    if (e.key === 'Escape' && ui.clip && !(ui.multi || ui.sel.length || ui.fmulti || ui.fsel.length)) { ui.clip = null; render(); return; }
     if (e.key === 'Escape' && (ui.multi || ui.sel.length || ui.fmulti || ui.fsel.length)) { ui.multi = false; ui.sel = []; ui.fmulti = false; ui.fsel = []; render(); return; }
   });
   document.addEventListener('change', e => {

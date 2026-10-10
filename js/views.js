@@ -20,6 +20,19 @@ function labelItems(b, max, tag) {
 }
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.8.8M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.8-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const SEL_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
+const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 2.5V2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" stroke="currentColor" stroke-width="1.5"/></svg>';
+const PASTE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="3.5" y="3" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 3V2h5v1M7 9.5h4M9 7.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+/* 복사해 둔 것 안내 줄: 블록은 조립 화면에서, 보관장은 배치도와 조립 화면에서 붙여 넣어요 */
+function clipBar(where) {
+  const c = ui.clip; if (!c) return '';
+  if (c.type === 'blocks' && where !== 'cab') return '';
+  const what = c.type === 'cab' ? `${esc(c.data.name)} (${T('cab')}, 블록 ${c.data.blocks.length}개)` : `블록 ${c.data.length}개 (${esc(c.data.map(b => b.label).join(', '))})`;
+  const items = c.type === 'cab' ? c.data.blocks.reduce((a, b) => a + b.items.length, 0) : c.data.reduce((a, b) => a + b.items.length, 0);
+  return `<div class="toolbar clipbar">${COPY_SVG}<span>복사해 둔 것: <b>${what}</b></span>
+    ${items ? `<label class="minl" style="color:var(--ink);font-size:12.5px"><input id="clip-items" type="checkbox" data-ch="clipItems" ${ui.clipItems ? 'checked' : ''}> 물품 ${items}종도 함께 (수량 포함)</label>` : ''}
+    ${c.type === 'cab' ? `<button class="btn sm" data-act="pasteCab">${PASTE_SVG} ${esc(M().roomName)}에 붙여넣기</button>` : `<span class="hint">점선 칸을 누르면 그 자리에 붙여요.</span><button class="btn sm" data-act="pasteBlocksAuto">빈 곳에 붙여넣기</button>`}
+    <button class="btn ghost sm" data-act="clipClear">그만두기</button></div>`;
+}
 const CHEV = '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="m2 2 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const VIEWS = ['room', 'cab', 'list', 'loans', 'stats', 'qr', 'backup', 'set'];
 
@@ -145,7 +158,7 @@ function renderGate() {
 function renderRoom() {
   const el = $('#v-room'), R = M().room, q = ui.q.trim(), L = layoutLocked();
   const U = ui.U = Math.max(24, Math.floor((el.clientWidth - 12) / R.w));
-  let h = `<div class="toolbar"><button class="btn" data-act="addCab">＋ ${T('cab')}</button>
+  let h = clipBar('room') + `<div class="toolbar"><button class="btn" data-act="addCab">＋ ${T('cab')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="bench">＋ ${T('bench')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="desk">＋ ${T('desk')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="sink">＋ ${T('sink')}</button>
@@ -169,8 +182,8 @@ function renderRoom() {
   const f = selF;
   if (f) {
     h += `<div class="toolbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
-    <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><b>${f.w}</b><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
-    <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><b>${f.h}</b><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
+    <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><input class="stepnum" id="furn-w" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.w}" data-ch="stepSet" data-a="furnSize" data-k="w" data-cur="${f.w}" aria-label="가로 (숫자 입력)"><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
+    <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><input class="stepnum" id="furn-h" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.h}" data-ch="stepSet" data-a="furnSize" data-k="h" data-cur="${f.h}" aria-label="세로 (숫자 입력)"><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="furnLock" aria-pressed="${!!f.locked}">${LOCK_SVG} ${f.locked ? '잠김' : '위치 잠그기'}</button>
     ${floorGrouped(f) ? `<span class="grprow sm">${LINK_SVG}<span><b>묶음 ${floorGroupNo(f.group)}</b> · ${floorGroup(f.group).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroupFloor" data-id="${f.group}">묶음 풀기</button></span>` : ''}
     <button class="btn danger sm" data-act="furnDel">삭제</button><button class="btn ghost sm" data-act="furnClose">닫기</button></div>`;
@@ -217,18 +230,19 @@ function renderCab() {
   let h = `<div class="picker">${list.map(c => `<button class="chip" data-act="pickCab" data-id="${c.id}" aria-pressed="${c.id === cab.id}">${c.locked ? LOCK_SVG : ''}${esc(c.name)}${conflicts(c).length ? '<i class="warnmark">!</i>' : ''}</button>`).join('')}<button class="chip" data-act="addCab">＋ 새 ${T('cab')}</button></div>
   <div class="cabwrap"><div style="min-width:0">
   <div class="cabhead"><input id="cab-name" class="name" data-ch="cabName" value="${esc(cab.name)}" aria-label="${T('cab')} 이름">
-   <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><b>${cab.cols}</b><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= 8 ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
-   <span class="stepper"><span>세로 칸</span><button data-act="cabSize" data-k="rows" data-d="-1" ${shrinkR ? '' : 'disabled'} aria-label="세로 칸 줄이기">−</button><b>${cab.rows}</b><button data-act="cabSize" data-k="rows" data-d="1" ${cab.rows >= 8 ? 'disabled' : ''} aria-label="세로 칸 늘이기">＋</button></span>
+   <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><input class="stepnum" id="cab-cols" type="number" inputmode="decimal" min="1" max="8" step="1" value="${cab.cols}" data-ch="stepSet" data-a="cabSize" data-k="cols" data-cur="${cab.cols}" aria-label="가로 칸 (숫자 입력)"><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= 8 ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
+   <span class="stepper"><span>세로 칸</span><button data-act="cabSize" data-k="rows" data-d="-1" ${shrinkR ? '' : 'disabled'} aria-label="세로 칸 줄이기">−</button><input class="stepnum" id="cab-rows" type="number" inputmode="decimal" min="1" max="8" step="1" value="${cab.rows}" data-ch="stepSet" data-a="cabSize" data-k="rows" data-cur="${cab.rows}" aria-label="세로 칸 (숫자 입력)"><button data-act="cabSize" data-k="rows" data-d="1" ${cab.rows >= 8 ? 'disabled' : ''} aria-label="세로 칸 늘이기">＋</button></span>
    <button class="btn ghost sm" data-act="multiToggle" aria-pressed="${ui.multi}">${SEL_SVG} ${ui.multi ? '고르는 중' : '여러 블록 고르기'}</button>
    <button class="btn ghost sm" data-act="cabLock" aria-pressed="${!!cab.locked}">${LOCK_SVG} ${cab.locked ? '배치도 위치 잠김' : '배치도 위치 잠그기'}</button>
    ${rooms().length > 1 ? `<label class="minl movesel">놓인 곳<select id="cab-room" class="field" data-ch="cabRoom">${rooms().map(r => `<option value="${r.id}" ${r.id === roomOf(cab) ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('')}</select></label>` : ''}
+   <button class="btn ghost sm" data-act="copyCab">${COPY_SVG} ${T('cab')} 복사</button>
    ${confirmBtn('cabDel', cab.id, `${T('cab')} 삭제`, '한 번 더 누르면 삭제')}</div>
-  ${elsewhere(q)}
+  ${clipBar('cab')}${elsewhere(q)}
   <div class="stage"><div class="cabinet"><div class="plate">${esc(cab.name)}</div>
    <div class="cab-inner" style="width:${cab.cols * S2}px;height:${cab.rows * S2}px;background-size:100% ${S2}px">`;
   const occ = new Set(); cab.blocks.forEach(b => { for (let r = b.r; r < b.r + b.h; r++) for (let c = b.c; c < b.c + b.w; c++) occ.add(r + ',' + c); });
   for (let r = 0; r < cab.rows; r++) for (let c = 0; c < cab.cols; c++) if (!occ.has(r + ',' + c))
-    h += `<button class="slot" data-act="addBlock" data-c="${c}" data-r="${r}" aria-label="위에서 ${r + 1}번째 줄, 왼쪽에서 ${c + 1}번째 칸에 블록 붙이기" style="left:${c * S2 + 4}px;top:${r * S2 + 4}px;width:${S2 - 8}px;height:${S2 - 8}px">＋</button>`;
+    h += ui.clip && ui.clip.type === 'blocks' ? `<button class="slot paste" data-act="pasteBlocksAt" data-c="${c}" data-r="${r}" aria-label="위에서 ${r + 1}번째 줄, 왼쪽에서 ${c + 1}번째 칸에 붙여넣기" title="여기에 붙여넣기" style="left:${c * S2 + 4}px;top:${r * S2 + 4}px;width:${S2 - 8}px;height:${S2 - 8}px">${PASTE_SVG}</button>` : `<button class="slot" data-act="addBlock" data-c="${c}" data-r="${r}" aria-label="위에서 ${r + 1}번째 줄, 왼쪽에서 ${c + 1}번째 칸에 블록 붙이기" style="left:${c * S2 + 4}px;top:${r * S2 + 4}px;width:${S2 - 8}px;height:${S2 - 8}px">＋</button>`;
   cab.blocks.forEach(b => {
     const c = cat(b.cat), hz = [...hazardsOf(b)].map(x => HZ[x]).join('·'); let low = 0, ex = 0;
     b.items.forEach(it => { const s = itemStatus(it); if (s.includes('low')) low++; if (s.includes('expired') || s.includes('soon')) ex++; });
@@ -256,6 +270,7 @@ function multiPanel(cab) {
   <div class="sizes">
     <button class="btn" data-act="groupSel" ${picked.length > 1 && !sameGroup ? '' : 'disabled'}>${LINK_SVG} 묶기</button>
     ${anyGrouped ? `<button class="btn ghost" data-act="ungroupSel">묶음 풀기</button>` : ''}
+    <button class="btn ghost" data-act="copyBlocks" ${picked.length ? '' : 'disabled'}>${COPY_SVG} 복사</button>
     <button class="btn ghost" data-act="multiDone">고르기 끝내기</button>
   </div>
   <p class="help" style="font-size:12px">묶은 블록은 고르기를 끝낸 뒤에도 하나를 끌면 함께 움직여요. 컴퓨터에서는 Shift 키를 누른 채 블록을 눌러도 여러 개를 고를 수 있어요.</p></aside>`;
@@ -273,16 +288,16 @@ function blockPanel(cab, b) {
   <div class="chips">${M().categories.map(x => `<button class="chip" data-act="blkCat" data-id="${x.id}" aria-pressed="${b.cat === x.id}"><i class="sw" style="background:${x.color}"></i>${esc(x.name)}</button>`).join('')}</div>
   ${isGrouped(cab, b) ? `<div class="grprow">${LINK_SVG}<span><b>묶음 ${groupNo(cab, b.group)}</b> · 블록 ${groupOf(cab, b).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroup" data-id="${b.group}">묶음 풀기</button></div>` : ''}
   <div class="lbl">크기 (칸)</div>
-  <div class="sizes"><span class="stepper"><span>가로</span><button data-act="blkSize" data-k="w" data-d="-1" ${b.w > 1 ? '' : 'disabled'} aria-label="가로 줄이기">−</button><b>${b.w}</b><button data-act="blkSize" data-k="w" data-d="1" ${can(1, 0) ? '' : 'disabled'} aria-label="가로 늘이기">＋</button></span>
-  <span class="stepper"><span>세로</span><button data-act="blkSize" data-k="h" data-d="-1" ${b.h > 1 ? '' : 'disabled'} aria-label="세로 줄이기">−</button><b>${b.h}</b><button data-act="blkSize" data-k="h" data-d="1" ${can(0, 1) ? '' : 'disabled'} aria-label="세로 늘이기">＋</button></span>
-  <span class="stepper"><span>칸 안의 단</span><button data-act="blkShelves" data-d="-1" ${N > 1 ? '' : 'disabled'} aria-label="단 줄이기">−</button><b>${N}</b><button data-act="blkShelves" data-d="1" ${N < MAX_SHELVES ? '' : 'disabled'} aria-label="단 늘리기">＋</button></span></div>
+  <div class="sizes"><span class="stepper"><span>가로</span><button data-act="blkSize" data-k="w" data-d="-1" ${b.w > 1 ? '' : 'disabled'} aria-label="가로 줄이기">−</button><input class="stepnum" id="blk-w" type="number" inputmode="decimal" min="1" max="8" step="1" value="${b.w}" data-ch="stepSet" data-a="blkSize" data-k="w" data-cur="${b.w}" aria-label="블록 가로 (숫자 입력)"><button data-act="blkSize" data-k="w" data-d="1" ${can(1, 0) ? '' : 'disabled'} aria-label="가로 늘이기">＋</button></span>
+  <span class="stepper"><span>세로</span><button data-act="blkSize" data-k="h" data-d="-1" ${b.h > 1 ? '' : 'disabled'} aria-label="세로 줄이기">−</button><input class="stepnum" id="blk-h" type="number" inputmode="decimal" min="1" max="8" step="1" value="${b.h}" data-ch="stepSet" data-a="blkSize" data-k="h" data-cur="${b.h}" aria-label="블록 세로 (숫자 입력)"><button data-act="blkSize" data-k="h" data-d="1" ${can(0, 1) ? '' : 'disabled'} aria-label="세로 늘이기">＋</button></span>
+  <span class="stepper"><span>칸 안의 단</span><button data-act="blkShelves" data-d="-1" ${N > 1 ? '' : 'disabled'} aria-label="단 줄이기">−</button><input class="stepnum" id="blk-sh" type="number" inputmode="decimal" min="1" max="4" step="1" value="${N}" data-ch="stepSet" data-a="blkShelves" data-cur="${N}" aria-label="칸 안의 단 (숫자 입력)"><button data-act="blkShelves" data-d="1" ${N < MAX_SHELVES ? '' : 'disabled'} aria-label="단 늘리기">＋</button></span></div>
   ${N > 1 ? '<p class="help" style="font-size:12px">단은 맨 아래가 1단이에요.</p>' : ''}
   <div class="lbl"><span>물품 ${b.items.length}종</span><span>최소 수량 아래면 ‘부족’</span></div>
   ${N > 1 ? shelfOrder(N).map(n => { const its = b.items.filter(i => shelfNo(b, i) === n); return `<div class="shelfgrp"><div class="shelfhead"><b>${shelfName(n, N)}</b><span>${its.length}종</span></div><div class="items">${its.map(it => itemCard(it, b)).join('') || '<p class="help">비어 있어요.</p>'}</div></div>`; }).join('')
     : `<div class="items">${b.items.map(it => itemCard(it, b)).join('') || '<p class="help">아직 물품이 없어요.</p>'}</div>`}
   <div class="addrow">${N > 1 ? `<select id="new-shelf" class="field" aria-label="넣을 단">${shelfOrder(N).map(n => `<option value="${n}" ${Math.min(ui.newShelf || 1, N) === n ? 'selected' : ''}>${n}단</option>`).join('')}</select>` : ''}<input id="new-item" placeholder="물품 이름 (예: 염산 1 M)" aria-label="새 물품 이름"><button class="btn" data-act="addItem">추가</button></div>
   ${qr ? `<div class="lbl">이 칸의 QR</div><div class="qrbox"><div class="qr">${qr}</div><p class="help">휴대폰으로 찍으면 이 블록이 바로 열려요. 승인된 선생님만 내용을 볼 수 있어요.</p></div>` : ''}
-  <div>${confirmBtn('delBlock', b.id, '블록 삭제', b.items.length ? `물품 ${b.items.length}종도 지워져요 · 한 번 더` : '한 번 더 누르면 삭제')}</div></aside>`;
+  <div class="sizes"><button class="btn ghost sm" data-act="copyBlocks" data-id="${b.id}">${COPY_SVG} 블록 복사</button>${confirmBtn('delBlock', b.id, '블록 삭제', b.items.length ? `물품 ${b.items.length}종도 지워져요 · 한 번 더` : '한 번 더 누르면 삭제')}</div></aside>`;
 }
 export const ghsMarks = list => !safetyOn() ? '' : (list || []).map(g => GHS[g] ? `<span class="ghs" title="${g} ${GHS[g][1]}"><b>${GHS[g][0]}</b></span>` : '').join('');
 function itemCard(it, b) {
@@ -437,8 +452,8 @@ function renderSet() {
     ${confirmBtn('catDel', c.id, '삭제', use[c.id] ? `${use[c.id]}곳 사용 중 · 삭제` : '정말 삭제')}</div>`).join('')}
    <div><button class="btn ghost" data-act="catAdd">＋ 분류 추가</button></div></div>
   <div class="panel"><h3>${T('room')} 바닥</h3><p class="help">격자 1칸은 약 50 cm예요.</p>
-    <div class="sizes"><span class="stepper"><span>가로</span><button data-act="roomSize" data-k="w" data-d="-1" aria-label="가로 줄이기">−</button><b>${M().room.w}</b><button data-act="roomSize" data-k="w" data-d="1" aria-label="가로 늘이기">＋</button></span>
-    <span class="stepper"><span>세로</span><button data-act="roomSize" data-k="h" data-d="-1" aria-label="세로 줄이기">−</button><b>${M().room.h}</b><button data-act="roomSize" data-k="h" data-d="1" aria-label="세로 늘이기">＋</button></span>
+    <div class="sizes"><span class="stepper"><span>가로</span><button data-act="roomSize" data-k="w" data-d="-1" aria-label="가로 줄이기">−</button><input class="stepnum" id="room-w" type="number" inputmode="decimal" min="10" max="48" step="1" value="${M().room.w}" data-ch="stepSet" data-a="roomSize" data-k="w" data-cur="${M().room.w}" aria-label="바닥 가로 (숫자 입력)"><button data-act="roomSize" data-k="w" data-d="1" aria-label="가로 늘이기">＋</button></span>
+    <span class="stepper"><span>세로</span><button data-act="roomSize" data-k="h" data-d="-1" aria-label="세로 줄이기">−</button><input class="stepnum" id="room-h" type="number" inputmode="decimal" min="10" max="48" step="1" value="${M().room.h}" data-ch="stepSet" data-a="roomSize" data-k="h" data-cur="${M().room.h}" aria-label="바닥 세로 (숫자 입력)"><button data-act="roomSize" data-k="h" data-d="1" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="toggleLayoutLock" aria-pressed="${layoutLocked()}">${LOCK_SVG} ${layoutLocked() ? '배치 잠금 켜짐' : '배치 전체 잠그기'}</button></div></div>
   </div>`;
 }

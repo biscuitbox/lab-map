@@ -55,7 +55,7 @@ export const ui = {
   phase: 'boot', view: 'room', cab: null, block: null, furn: null, q: '', filter: 'all', confirm: null, newCat: 'c_reag',
   U: 30, S: 100, openItem: null, loanItem: '', year: String(new Date().getFullYear()), qrCab: 'all',
   reqErr: '', hashDone: false, deferred: false, cmp: null, autoBackupDone: false, pruned: false, photo: null,
-  room: savedRoom, scope: 'room', addingRoom: false, newShelf: 1, multi: false, sel: [], fmulti: false, fsel: [], newRoomKind: 'science', swing: null, migrated: false
+  room: savedRoom, scope: 'room', addingRoom: false, newShelf: 1, multi: false, sel: [], fmulti: false, fsel: [], clip: null, clipItems: false, newRoomKind: 'science', swing: null, migrated: false
 };
 
 let toastT;

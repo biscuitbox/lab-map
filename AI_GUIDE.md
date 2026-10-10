@@ -115,6 +115,8 @@ LICENSE           MIT 이용 조건
   - `S.meta` 사이트 설정 하나(`siteTitle` + 특별실 목록 `rooms`), `S.cabs` 모든 특별실의 보관장 `{id: cabinet}`, `S.loans`, `S.logs`, `S.trash`, `S.bidx`(백업 목록), `S.members`, `S.invites`, `S.requests`, `S.myReq`
 - `ui` (state.js): 이 브라우저에만 있는 화면 상태 (`ui.view`, 선택한 보관장 `ui.cab`, 선택한 블록 `ui.block`, 검색어 `ui.q`, 두 번 누르기 대기 `ui.confirm` 등)
 - `ui.phase`: `'boot' | 'noconfig' | 'signin' | 'checking' | 'gate' | 'ready'`
+- 복사해 둔 것은 `ui.clip`(`{type:'blocks', data:[블록]}` 또는 `{type:'cab', data:보관장}`)에 있고, 붙일 때 `cloneBlocks()`가 블록·물품·묶음 id를 새로 만들어요. `ui.clipItems`가 참일 때만 물품을 복사해요.
+- 크기 칸의 숫자 입력은 `data-ch="stepSet"`이 지금 값과의 차이를 −/＋ 단추와 같은 `ACT`(cabSize·blkSize·blkShelves·furnSize·roomSize)로 넘겨 같은 규칙을 지켜요.
 
 ### 여러 특별실
 - `ui.room` = 지금 보고 있는 특별실 id (이 브라우저에 기억). 바꿀 때는 꼭 `setRoom(id)`를 써요.
