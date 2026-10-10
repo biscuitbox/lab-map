@@ -133,7 +133,7 @@ LICENSE           MIT 이용 조건
 ### 이벤트 (위임 방식)
 - 버튼: `data-act="이름"` → `actions.js`의 `ACT.이름(element, event)`. 값은 `data-id`, `data-d` 같은 `data-*`로 넘겨요.
 - 입력칸·선택 상자: `data-ch="이름"` → `CH.이름(element)` (`change` 이벤트). 처리 뒤 `render()`가 자동으로 불려요.
-- 끌기: `data-drag="cab" | "furn" | "block"` → `startDrag`. 블록은 `ui.sel`(여러 블록 고르기) → 묶음(`groupOf`) → 한 블록 순서로 함께 옮길 대상을 정해요.
+- 끌기: `data-drag="cab" | "furn" | "block"` → `startDrag`. 블록은 `ui.sel`(여러 블록 고르기) → 묶음(`groupOf`) → 한 블록 순서로, 배치도는 `ui.fsel`('c:보관장id'·'f:가구id') → 묶음(`floorGroup`) → 하나 순서로 함께 옮길 대상을 정해요.
 
 ### 저장
 - 데이터를 바꾸는 순서: **① `S`를 직접 고침 → ② 저장 함수 호출 → ③ `render()`**
@@ -153,11 +153,11 @@ LICENSE           MIT 이용 조건
 { version: 3, siteTitle,
   rooms: [{ id, roomName, order, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm
     categories: [{ id, name, color: '#rrggbb', hazard: ''|'acid'|'base'|'oxidizer'|'flammable'|'toxic' }],
-    furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked }],
+    furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked, group }],
     layoutLocked: false, terms: { room, cab, bench, desk, sink }, preset: 'science'|'maker'|'music'|…|'custom', safety: true }] }
 
-// cabinets/{id}   — 보관장 하나 (roomId = 놓인 특별실)
-{ id, roomId, name, cols, rows, x, y, locked, order,
+// cabinets/{id}   — 보관장 하나 (roomId = 놓인 특별실, group = 배치도 묶음. 같은 특별실의 가구 group과 같은 값이면 함께 움직여요)
+{ id, roomId, group, name, cols, rows, x, y, locked, order,
   blocks: [{ id, c, r, w, h, label, cat, shelves: 1~4, group: ''|groupId,   // c,r = 칸 위치(0부터), w,h = 차지하는 칸 수, shelves = 칸 안의 단 수, group = 같은 값끼리 함께 움직이는 묶음(2개 이상일 때만)
     items: [{ id, name, qty, unit, min: ''|number, expiry: 'YYYY-MM-DD'|'', cat: ''(블록 분류와 같음)|catId,
               cas, msds, ghs: ['GHS01'…'GHS09'], photoAt: ''|ms(사진이 있으면 올린 시각), shelf: 1~4(1 = 맨 아래 단) }] }] }

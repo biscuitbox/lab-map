@@ -5,7 +5,8 @@ import {
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
   fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
   rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope,
-  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES, groupOf, isGrouped, groupNo
+  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES, groupOf, isGrouped, groupNo,
+  floorItems, floorGroup, floorGrouped, floorGroupNo
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
 
@@ -148,27 +149,43 @@ function renderRoom() {
     <button class="btn ghost" data-act="addFurn" data-type="bench">＋ ${T('bench')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="desk">＋ ${T('desk')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="sink">＋ ${T('sink')}</button>
+    <button class="btn ghost" data-act="fmultiToggle" aria-pressed="${ui.fmulti}">${SEL_SVG} ${ui.fmulti ? '고르는 중' : '여러 개 고르기'}</button>
     <button class="btn ghost" data-act="toggleLayoutLock" aria-pressed="${L}">${LOCK_SVG} ${L ? '배치 잠금 켜짐' : '배치 전체 잠그기'}</button>
-    <span class="hint">${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 누르면 조립 화면이 열려요.</span></div>`;
-  const f = M().furniture.find(x => x.id === ui.furn);
+    <span class="hint">${ui.fmulti ? `함께 옮길 ${j(T('cab'), '과/와')} 가구를 차례로 누르세요.` : `${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 누르면 조립 화면이 열려요.`}</span></div>`;
+  const items = floorItems(); ui.fsel = ui.fsel.filter(k => items.some(x => x.k === k));
+  if (ui.fmulti || ui.fsel.length) {
+    const picked = items.filter(x => ui.fsel.includes(x.k)), g0 = picked[0] && picked[0].o.group;
+    const same = picked.length > 1 && g0 && picked.every(x => x.o.group === g0) && floorGroup(g0).length === picked.length;
+    h += `<div class="toolbar fbar"><b>${picked.length}개 골랐어요</b>
+      ${picked.map(x => `<span class="chip">${esc(x.cab ? x.o.name : x.o.label)}</span>`).join('')}
+      <button class="btn sm" data-act="groupFloor" ${picked.length > 1 && !same ? '' : 'disabled'}>${LINK_SVG} 묶기</button>
+      ${picked.some(x => floorGrouped(x.o)) ? '<button class="btn ghost sm" data-act="ungroupFloor">묶음 풀기</button>' : ''}
+      <button class="btn ghost sm" data-act="fmultiDone">고르기 끝내기</button>
+      <span class="hint">고른 것 중 하나를 끌면 함께 옮겨져요. 묶어 두면 고르지 않아도 함께 움직여요.</span></div>`;
+  }
+  const selF = M().furniture.find(x => x.id === ui.furn), selGroup = selF && floorGrouped(selF) ? selF.group : '';
+  const fcls = (k, o) => `${ui.fsel.includes(k) ? 'picked' : ''} ${selGroup && o.group === selGroup && o !== selF ? 'gsel' : ''}`;
+  const gtag = o => floorGrouped(o) ? `<b class="ftag" title="묶음 ${floorGroupNo(o.group)}">${LINK_SVG}${floorGroupNo(o.group)}</b>` : '';
+  const f = selF;
   if (f) {
     h += `<div class="toolbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
     <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><b>${f.w}</b><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
     <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><b>${f.h}</b><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="furnLock" aria-pressed="${!!f.locked}">${LOCK_SVG} ${f.locked ? '잠김' : '위치 잠그기'}</button>
+    ${floorGrouped(f) ? `<span class="grprow sm">${LINK_SVG}<span><b>묶음 ${floorGroupNo(f.group)}</b> · ${floorGroup(f.group).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroupFloor" data-id="${f.group}">묶음 풀기</button></span>` : ''}
     <button class="btn danger sm" data-act="furnDel">삭제</button><button class="btn ghost sm" data-act="furnClose">닫기</button></div>`;
   }
   h += elsewhere(q);
   h += `<div class="floor-scroll"><div class="floor" style="width:${R.w * U}px;height:${R.h * U}px;--u:${U}px">`;
   M().furniture.forEach(f => {
     const lk = L || f.locked;
-    h += `<div class="furn ${f.type} ${ui.furn === f.id ? 'sel' : ''} ${q ? 'dim' : ''} ${lk ? 'locked' : ''}" data-drag="furn" data-id="${f.id}" style="left:${f.x * U}px;top:${f.y * U}px;width:${f.w * U}px;height:${f.h * U}px">${f.locked ? LOCK_SVG : ''}${esc(f.label)}</div>`;
+    h += `<div class="furn ${f.type} ${ui.furn === f.id ? 'sel' : ''} ${fcls('f:' + f.id, f)} ${q ? 'dim' : ''} ${lk ? 'locked' : ''}" data-drag="furn" data-id="${f.id}" style="left:${f.x * U}px;top:${f.y * U}px;width:${f.w * U}px;height:${f.h * U}px">${f.locked ? LOCK_SVG : ''}${esc(f.label)}${gtag(f)}</div>`;
   });
   cabList().forEach(cab => {
     const ft = cabFoot(cab), m = q ? matchCount(cab, q) : 0, w = conflicts(cab).length, lk = L || cab.locked;
     const iw = ft.w * U - 8, ih = ft.h * U - 29;
-    h += `<div class="cabcard ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
-      <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}</div>
+    h += `<div class="cabcard ${fcls('c:' + cab.id, cab)} ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
+      <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${gtag(cab)}${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}</div>
       <div class="mini">${cab.blocks.map(b => {
         const c = cat(b.cat), bw = b.w / cab.cols * iw, bh = b.h / cab.rows * ih;
         const N = shelvesOf(b), tip = N > 1 ? `${b.label}\n${shelfOrder(N).map(n => `${n}단: ${b.items.filter(i => shelfNo(b, i) === n).map(i => i.name).join(', ') || '비어 있음'}`).join('\n')}` : `${b.label} — ${b.items.map(i => i.name).join(', ') || '비어 있음'}`;

@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, groupOf, isGrouped,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -45,6 +45,8 @@ function addCab() {
   S.cabs[cab.id] = cab; saveCab(cab.id); ui.view = 'cab'; ui.cab = cab.id; ui.block = null; render();
   toast(`새 ${j(T('cab'), '을/를')} 만들었어요. 빈 칸을 눌러 블록을 붙이세요.`);
 }
+/* 배치도에서 바뀐 보관장은 각각, 가구는 특별실 설정 한 번에 저장 */
+function saveFloor(list) { list.filter(x => x.cab).forEach(x => saveCab(x.o.id)); if (list.some(x => !x.cab)) saveMeta(); }
 function undoable(msg, tid) { toast(msg, { label: '되돌리기', fn: () => { const r = restoreTrash(tid); render(); toast(r.msg); } }); }
 function needConfirm(k) { if (ui.confirm === k) { ui.confirm = null; return false; } ui.confirm = k; render(); return true; }
 const profileOf = () => ({ email: myEmail(), name: S.auth.displayName || '', photo: S.auth.photoURL || '' });
@@ -53,7 +55,7 @@ const validEmail = v => /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(v);
 const ACT = {
   login: async () => { ui.reqErr = ''; try { await login(); } catch (e) { if (e && e.code === 'auth/popup-closed-by-user') return; ui.reqErr = e && e.code === 'auth/unauthorized-domain' ? '이 주소가 Firebase 승인 도메인에 없어요. SETUP.md 3단계를 확인해 주세요.' : '로그인하지 못했어요. 잠시 후 다시 시도해 주세요.'; render(); } },
   logout: () => logout(),
-  tab: t => { ui.view = t.dataset.view; ui.multi = false; ui.sel = []; render(); },
+  tab: t => { ui.view = t.dataset.view; ui.multi = false; ui.sel = []; ui.fmulti = false; ui.fsel = []; render(); },
   goFilter: t => { ui.view = 'list'; ui.filter = t.dataset.f; render(); },
   goWarn: () => { const c = cabList().find(c => conflicts(c).length); if (!c) { toast('보관 경고가 없어요'); return; } ui.view = 'cab'; ui.cab = c.id; ui.block = null; render(); const w = $('#warns'); if (w) w.scrollIntoView({ block: 'nearest' }); },
   filter: t => { ui.filter = t.dataset.f; render(); },
@@ -94,6 +96,17 @@ const ACT = {
   toggleLayoutLock: () => { M().layoutLocked = !M().layoutLocked; saveMeta(); render(); toast(M().layoutLocked ? `배치를 잠갔어요. ${j(T('cab'), '과/와')} 가구를 옮길 수 없어요.` : '배치 잠금을 풀었어요'); },
   cabLock: () => { const c = findCab(ui.cab); c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `배치도에서 이 ${T('cab')} 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
   pickCab: t => { ui.cab = t.dataset.id; ui.block = null; ui.multi = false; ui.sel = []; render(); },
+  fmultiToggle: () => { ui.fmulti = !ui.fmulti; ui.fsel = ui.fmulti && ui.furn ? ['f:' + ui.furn] : []; ui.furn = null; render(); },
+  fmultiDone: () => { ui.fmulti = false; ui.fsel = []; render(); },
+  groupFloor: () => {
+    const picked = floorItems().filter(x => ui.fsel.includes(x.k)); if (picked.length < 2) return;
+    const gid = 'fg' + uid(); picked.forEach(x => { x.o.group = gid; }); saveFloor(picked);
+    ui.fmulti = false; ui.fsel = []; render(); toast(`${picked.length}개를 묶었어요. 하나를 끌면 함께 옮겨져요.`);
+  },
+  ungroupFloor: t => {
+    const gids = new Set(t.dataset.id ? [t.dataset.id] : floorItems().filter(x => ui.fsel.includes(x.k) && x.o.group).map(x => x.o.group));
+    const hit = floorItems().filter(x => gids.has(x.o.group)); hit.forEach(x => { x.o.group = ''; }); saveFloor(hit); render(); toast('묶음을 풀었어요. 이제 따로 움직여요.');
+  },
   multiToggle: () => { ui.multi = !ui.multi; ui.sel = ui.multi && ui.block ? [ui.block] : []; ui.block = null; render(); },
   multiDone: () => { ui.multi = false; ui.sel = []; render(); },
   groupSel: () => {
@@ -245,7 +258,7 @@ const CH = {
   siteTitle: t => { if (!isManager()) return; S.meta.siteTitle = t.value.trim() || SITE_TITLE; saveMeta(); toast('사이트 제목을 바꿨어요'); },
   cabRoom: t => {
     const c = findCab(ui.cab), r = roomById(t.value); if (!c || !r) return;
-    c.roomId = r.id; const ft = cabFoot(c); c.x = clamp(c.x, 0, Math.max(0, r.room.w - ft.w)); c.y = clamp(c.y, 0, Math.max(0, r.room.h - ft.h)); c.locked = false; saveCab(c.id);
+    c.roomId = r.id; c.group = ''; const ft = cabFoot(c); c.x = clamp(c.x, 0, Math.max(0, r.room.w - ft.w)); c.y = clamp(c.y, 0, Math.max(0, r.room.h - ft.h)); c.locked = false; saveCab(c.id);
     setRoom(r.id); ui.cab = c.id; toast(`${j(`‘${c.name}’`, '을/를')} ${j(r.roomName, '으로/로')} 옮겼어요. 배치도에서 자리를 잡아 주세요.`);
   },
   cabName: t => { const c = findCab(ui.cab); c.name = t.value.trim() || `이름 없는 ${T('cab')}`; saveCab(c.id); },
@@ -297,16 +310,29 @@ function startDrag(e) {
       } else { ui.block = ui.block === id ? null : id; render(); }
     };
   } else {
-    const isCab = kind === 'cab', obj = isCab ? findCab(id) : M().furniture.find(f => f.id === id); if (!obj) return;
-    const lk = layoutLocked() || obj.locked, U = ui.U, ox = obj.x, oy = obj.y, sz = isCab ? cabFoot(obj) : { w: obj.w, h: obj.h }, R = M().room;
+    const isCab = kind === 'cab', key = (isCab ? 'c:' : 'f:') + id, items = floorItems(), me = items.find(x => x.k === key); if (!me) return;
+    // 함께 옮길 것: 고른 것들 → 묶음 → 이것 하나
+    const set = ui.fsel.length > 1 && ui.fsel.includes(key) ? items.filter(x => ui.fsel.includes(x.k)) : floorGrouped(me.o) ? floorGroup(me.o.group) : [me];
+    const size = x => x.cab ? cabFoot(x.o) : { w: x.o.w, h: x.o.h }, R = M().room, U = ui.U, shift = e.shiftKey;
+    const lk = layoutLocked() || set.some(x => x.o.locked), start = set.map(x => ({ x: x.o.x, y: x.o.y }));
+    const minX = -Math.min(...set.map(x => x.o.x)), maxX = Math.min(...set.map(x => R.w - size(x).w - x.o.x));
+    const minY = -Math.min(...set.map(x => x.o.y)), maxY = Math.min(...set.map(x => R.h - size(x).h - x.o.y));
+    const els = set.map(x => document.querySelector(`[data-drag="${x.cab ? 'cab' : 'furn'}"][data-id="${x.o.id}"]`));
+    let dx = 0, dy = 0;
     mv = ev => {
-      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return; moved = true; if (lk) return; t.classList.add('dragging');
-      obj.x = clamp(snap(ox + (ev.clientX - sx) / U), 0, Math.max(0, R.w - sz.w)); obj.y = clamp(snap(oy + (ev.clientY - sy) / U), 0, Math.max(0, R.h - sz.h));
-      t.style.left = obj.x * U + 'px'; t.style.top = obj.y * U + 'px';
+      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 5) return; moved = true; if (lk) return;
+      dx = clamp(snap((ev.clientX - sx) / U), minX, Math.max(minX, maxX)); dy = clamp(snap((ev.clientY - sy) / U), minY, Math.max(minY, maxY));
+      set.forEach((x, i) => { x.o.x = start[i].x + dx; x.o.y = start[i].y + dy; const el = els[i]; if (el) { el.classList.add('dragging'); el.style.left = x.o.x * U + 'px'; el.style.top = x.o.y * U + 'px'; } });
     };
     done = () => {
-      if (moved) { if (lk) { toast('위치가 잠겨 있어요'); return; } if (obj.x !== ox || obj.y !== oy) { isCab ? saveCab(id) : saveMeta(); } render(); }
-      else if (isCab) { ui.view = 'cab'; ui.cab = id; ui.block = null; render(); }
+      if (moved) {
+        if (lk) { toast(set.length > 1 ? '잠긴 것이 있어서 함께 옮길 수 없어요' : '위치가 잠겨 있어요'); return; }
+        if (dx || dy) { saveFloor(set); if (set.length > 1) toast(`${set.length}개를 함께 옮겼어요`); }
+        render();
+      } else if (ui.fmulti || shift) {
+        if (!ui.fmulti) { ui.fmulti = true; if (ui.furn) ui.fsel = ['f:' + ui.furn]; ui.furn = null; }
+        ui.fsel = ui.fsel.includes(key) ? ui.fsel.filter(k => k !== key) : [...ui.fsel, key]; render();
+      } else if (isCab) { ui.view = 'cab'; ui.cab = id; ui.block = null; render(); }
       else { ui.furn = ui.furn === id ? null : id; render(); }
     };
   }
@@ -328,7 +354,7 @@ export function installHandlers() {
     if (e.key === 'Enter' && e.target.id === 'newroom-name') { e.preventDefault(); ACT.addRoom(); return; }
     if (e.key === 'Escape' && ui.addingRoom) { ui.addingRoom = false; render(); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.classList && e.target.classList.contains('block')) { e.preventDefault(); const id = e.target.dataset.id; if (ui.multi) ui.sel = ui.sel.includes(id) ? ui.sel.filter(x => x !== id) : [...ui.sel, id]; else ui.block = id; render(); }
-    if (e.key === 'Escape' && (ui.multi || ui.sel.length)) { ui.multi = false; ui.sel = []; render(); return; }
+    if (e.key === 'Escape' && (ui.multi || ui.sel.length || ui.fmulti || ui.fsel.length)) { ui.multi = false; ui.sel = []; ui.fmulti = false; ui.fsel = []; render(); return; }
   });
   document.addEventListener('change', e => {
     if (e.target.dataset && e.target.dataset.photoUp) {

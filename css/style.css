@@ -360,3 +360,13 @@ button.door.on:hover{background:var(--board)}
 .grprow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:12.5px}
 .grprow span{flex:1 1 160px}
 .btn svg{flex:none}
+
+/* ── 배치도에서 여러 개 고르기와 묶음 ── */
+.cabcard.picked,.furn.picked{outline:3px solid var(--accent);outline-offset:2px;z-index:3}
+.cabcard.gsel,.furn.gsel{outline:2.5px dashed var(--ink);outline-offset:2px}
+.ftag{display:inline-flex;align-items:center;gap:2px;padding:0 5px;border-radius:999px;background:var(--surface);color:var(--accent);font:700 10.5px/16px var(--f-mono);flex:none;margin-left:4px}
+.furn .ftag{position:absolute;top:3px;right:3px;margin:0;box-shadow:0 0 0 1px var(--line)}
+.fbar{padding:8px 12px;border-radius:10px;background:var(--accent-soft)}
+.fbar .chip{font-size:12px;padding:3px 9px}
+.grprow.sm{display:inline-flex;flex-wrap:nowrap;padding:4px 6px 4px 10px}
+.grprow.sm span{flex:none}
