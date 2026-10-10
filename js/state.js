@@ -193,7 +193,13 @@ export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const MAX_CELLS = 20;
 /* 배치도에서 보관장이 차지하는 크기(바닥 격자 칸). 직접 정했으면(fw, fh) 그 값, 아니면 칸 수로 계산하되 8칸 크기에서 더 커지지 않아요 */
 export const cabFootAuto = cab => ({ w: snap(Math.min(cab.cols, 8) * 1.6 + .4), h: snap(Math.min(cab.rows, 8) * 1.1 + 1.1) });
-export const cabFoot = cab => cab.fw && cab.fh ? { w: cab.fw, h: cab.fh } : cabFootAuto(cab);
+/* 돌리기 전 크기(실험장 앞면 기준). 배치도 가로·세로 입력은 이 값을 바꿔요 */
+export const cabFoot0 = cab => cab.fw && cab.fh ? { w: cab.fw, h: cab.fh } : cabFootAuto(cab);
+/* 배치도 방향: 0·90·180·270도(시계 방향). 90·270도면 가로·세로가 바뀌어요 */
+export const ROTS = [0, 90, 180, 270];
+export const rotOf = o => ROTS.includes(o && o.rot) ? o.rot : 0;
+/* 배치도에서 실제로 차지하는 크기(돌린 뒤). 위치 계산은 모두 이 값을 써요 */
+export const cabFoot = cab => { const f = cabFoot0(cab); return rotOf(cab) % 180 ? { w: f.h, h: f.w } : f; };
 
 export const myEmail = () => (S.auth && S.auth.email || '').toLowerCase();
 export const isCfgAdmin = () => ADMIN_EMAILS.map(e => e.toLowerCase()).includes(myEmail());
@@ -294,7 +300,7 @@ export function normalize(d) {
   const rids = new Set(meta.rooms.map(r => r.id)), first = meta.rooms[0].id;
   const sid = v => String(v || '').replace(/[^A-Za-z0-9]/g, '') || uid();
   cabs = cabs.map((c, i) => ({
-    id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, group: c.group || '', ...(c.fw && c.fh ? { fw: c.fw, fh: c.fh } : {}), name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
+    id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, group: c.group || '', ...(c.fw && c.fh ? { fw: c.fw, fh: c.fh } : {}), ...(rotOf(c) ? { rot: rotOf(c) } : {}), name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
     blocks: (c.blocks || []).map(b => ({
       id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '', shelves: shelvesOf(b), group: b.group || '',
       items: (b.items || []).map(it => clone({ ...newItem(it.name || '물품'), ...it, ghs: it.ghs || [] }))

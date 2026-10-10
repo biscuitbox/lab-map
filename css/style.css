@@ -382,3 +382,15 @@ button.door.on:hover{background:var(--board)}
 .clipbar>svg{color:var(--accent)}
 .slot.paste{opacity:1;border-color:var(--accent);color:var(--accent);background:var(--accent-soft);display:grid;place-items:center}
 .slot.paste:hover{background:var(--accent);color:var(--accent-ink)}
+/* 배치도에서 돌린 실험장: 이름 띠(벽 쪽)가 돌아간 쪽으로 가요. 글자는 바로 서 있어요 */
+.cabcard.rot90{flex-direction:row-reverse}
+.cabcard.rot180{flex-direction:column-reverse}
+.cabcard.rot270{flex-direction:row}
+.cabcard.rot90 .cabname,.cabcard.rot270 .cabname{writing-mode:vertical-rl;text-orientation:upright;height:auto;width:18px;padding:3px 0;letter-spacing:-1px}
+.mini span[data-sh=v]{background-image:repeating-linear-gradient(to right,transparent 0,transparent calc(100% / var(--sh) - 1.5px),rgba(0,0,0,.28) calc(100% / var(--sh) - 1.5px),rgba(0,0,0,.28) calc(100% / var(--sh)))}
+.rotbtn{flex:none;display:inline-grid;place-items:center;width:18px;height:18px;padding:0;border:0;border-radius:4px;background:transparent;color:inherit;cursor:pointer;transition:opacity .15s,background .15s}
+.rotbtn:hover{background:rgba(127,127,127,.25)}
+.cabname .rotbtn{margin-inline-start:auto;color:var(--frame-ink)}
+.furn .rotbtn{position:absolute;right:2px;bottom:2px;background:var(--surface);box-shadow:0 0 0 1px var(--line);color:var(--ink)}
+@media (hover:hover){.rotbtn{opacity:0}.cabcard:hover .rotbtn,.furn:hover .rotbtn,.furn.sel .rotbtn,.rotbtn:focus-visible{opacity:1}}
+.dragging .rotbtn{opacity:0!important}

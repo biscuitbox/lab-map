@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, MAX_CELLS, cabFootAuto, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, MAX_CELLS, cabFoot0, rotOf, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -46,6 +46,23 @@ function addCab() {
   toast(`새 ${j(T('cab'), '을/를')} 만들었어요. 빈 칸을 눌러 블록을 붙이세요.`);
 }
 /* 배치도에서 바뀐 보관장은 각각, 가구는 특별실 설정 한 번에 저장 */
+/* 함께 돌릴 것들의 가운데를 중심으로 시계 방향 90도. 실험장은 rot을 바꾸고, 가구는 가로·세로를 바꿔요 */
+function rotateFloor(set) {
+  const R = M().room, sz = x => x.cab ? cabFoot(x.o) : { w: x.o.w, h: x.o.h };
+  const box = list => { const b = list.map(x => ({ x, s: sz(x) })); return { b, x0: Math.min(...b.map(v => v.x.o.x)), y0: Math.min(...b.map(v => v.x.o.y)), x1: Math.max(...b.map(v => v.x.o.x + v.s.w)), y1: Math.max(...b.map(v => v.x.o.y + v.s.h)) }; };
+  // 옮기지 않고 이어서 돌리면 처음 가운데를 그대로 써요(네 번 돌리면 제자리)
+  const sig = set.map(x => x.k).sort().join(), pos = () => set.map(x => [x.o.x, x.o.y, rotOf(x.o), x.o.w, x.o.h].join()).join(';'), P = ui.rotPivot;
+  const B = box(set), [gx, gy] = P && P.sig === sig && P.pos === pos() ? [P.gx, P.gy] : [(B.x0 + B.x1) / 2, (B.y0 + B.y1) / 2];
+  B.b.forEach(({ x, s }) => {
+    const cx = x.o.x + s.w / 2, cy = x.o.y + s.h / 2, nx = gx - (cy - gy), ny = gy + (cx - gx);
+    if (x.cab) { const r = (rotOf(x.o) + 90) % 360; if (r) x.o.rot = r; else delete x.o.rot; } else { const w = x.o.w; x.o.w = x.o.h; x.o.h = w; }
+    const n = sz(x); x.o.x = snap(nx - n.w / 2); x.o.y = snap(ny - n.h / 2);
+  });
+  // 바닥 밖으로 나가면 다 같이 안으로 밀고, 그래도 넘치면 하나씩 맞춰요
+  const A = box(set), dx = A.x0 < 0 ? -A.x0 : A.x1 > R.w ? R.w - A.x1 : 0, dy = A.y0 < 0 ? -A.y0 : A.y1 > R.h ? R.h - A.y1 : 0;
+  A.b.forEach(({ x, s }) => { x.o.x = clamp(snap(x.o.x + dx), 0, Math.max(0, R.w - s.w)); x.o.y = clamp(snap(x.o.y + dy), 0, Math.max(0, R.h - s.h)); });
+  ui.rotPivot = { sig, gx, gy, pos: pos() };
+}
 function saveFloor(list) { list.filter(x => x.cab).forEach(x => saveCab(x.o.id)); if (list.some(x => !x.cab)) saveMeta(); }
 /* 복사·붙여넣기: 붙여 넣을 때마다 새 id를 만들어요. 물품은 '물품도 함께'를 고를 때만 복사해요 */
 function cloneBlocks(list, withItems) {
@@ -166,10 +183,20 @@ const ACT = {
   /* 배치도에서 보관장이 차지하는 크기 (격자 칸, 0.5칸 단위) */
   cabFloor: t => {
     const cab = findCab(ui.cab), R = M().room; if (!cab) return;
-    const cur = cabFoot(cab), k = t.dataset.k, lim = k === 'w' ? R.w : R.h, want = snap(cur[k] + +t.dataset.d), v = clamp(want, 2, lim);
+    // 화면의 가로·세로는 돌린 뒤 기준이라, 90·270도면 실험장의 세로·가로를 바꿔요
+    const cur = cabFoot0(cab), k = t.dataset.k, base = rotOf(cab) % 180 ? (k === 'w' ? 'h' : 'w') : k;
+    const lim = k === 'w' ? R.w : R.h, want = snap(cur[base] + +t.dataset.d), v = clamp(want, 2, lim);
     if (want !== v) toast(`배치도 크기는 2칸부터 바닥 크기(${lim}칸)까지 정할 수 있어요`);
-    cab.fw = k === 'w' ? v : cur.w; cab.fh = k === 'h' ? v : cur.h;
-    cab.x = clamp(cab.x, 0, Math.max(0, R.w - cab.fw)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - cab.fh)); saveCab(cab.id); render();
+    cab.fw = base === 'w' ? v : cur.w; cab.fh = base === 'h' ? v : cur.h;
+    const ft = cabFoot(cab); cab.x = clamp(cab.x, 0, Math.max(0, R.w - ft.w)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - ft.h)); saveCab(cab.id); render();
+  },
+  /* 배치도에서 시계 방향 90도 돌리기. 고른 것들 → 묶음 → 하나 순서로 함께 돌려요 */
+  rotFloor: t => {
+    const key = t.dataset.k, items = floorItems(), me = items.find(x => x.k === key); if (!me) return;
+    const set = ui.fsel.length > 1 && ui.fsel.includes(key) ? items.filter(x => ui.fsel.includes(x.k)) : floorGrouped(me.o) ? floorGroup(me.o.group) : [me];
+    if (layoutLocked() || set.some(x => x.o.locked)) { toast(set.length > 1 ? '잠긴 것이 있어서 함께 돌릴 수 없어요' : '위치가 잠겨 있어 돌릴 수 없어요'); return; }
+    rotateFloor(set); saveFloor(set); render();
+    toast(set.length > 1 ? `${set.length}개를 함께 90° 돌렸어요` : me.cab ? `‘${me.o.name}’ 방향: ${rotOf(me.o)}°` : `${j(`‘${me.o.label}’`, '을/를')} 90° 돌렸어요`);
   },
   cabFloorAuto: () => { const cab = findCab(ui.cab); if (!cab) return; delete cab.fw; delete cab.fh; const ft = cabFoot(cab), R = M().room; cab.x = clamp(cab.x, 0, Math.max(0, R.w - ft.w)); cab.y = clamp(cab.y, 0, Math.max(0, R.h - ft.h)); saveCab(cab.id); render(); toast('배치도 크기를 칸 수에 맞춰 되돌렸어요'); },
   cabSize: t => {
@@ -338,7 +365,7 @@ const CH = {
 };
 
 function startDrag(e) {
-  const t = e.target.closest('[data-drag]'); if (!t || e.button > 0) return;
+  const t = e.target.closest('[data-drag]'); if (!t || e.button > 0 || e.target.closest('[data-act]')) return;
   const kind = t.dataset.drag, id = t.dataset.id, sx = e.clientX, sy = e.clientY; let moved = false, mv, done;
   if (kind === 'block') {
     const { cab, b } = findBlock(id); if (!b) return; const S2 = ui.S, shift = e.shiftKey;

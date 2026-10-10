@@ -1,6 +1,6 @@
 // 화면 그리기
 import {
-  $, esc, ymd, TODAY, S, ui, M, cat, cabList, findCab, locate, ink, clamp, cabFoot, isManager, isCfgAdmin, layoutLocked,
+  $, esc, ymd, TODAY, S, ui, M, cat, cabList, findCab, locate, ink, clamp, cabFoot, rotOf, isManager, isCfgAdmin, layoutLocked,
   itemStatus, dday, hazardsOf, conflicts, canPlace, norm, itemMatch, blockMatch, matchCount, openLoans, loanedQty, stats,
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
   fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
@@ -20,6 +20,7 @@ function labelItems(b, max, tag) {
 }
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.8.8M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.8-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const SEL_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
+const ROT_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.5 7A4.5 4.5 0 1 1 9.8 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 1.2l1.3 2.6-2.8.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 2.5V2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" stroke="currentColor" stroke-width="1.5"/></svg>';
 const PASTE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="3.5" y="3" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 3V2h5v1M7 9.5h4M9 7.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 /* 복사해 둔 것 안내 줄: 블록은 조립 화면에서, 보관장은 배치도와 조립 화면에서 붙여 넣어요 */
@@ -173,6 +174,7 @@ function renderRoom() {
       ${picked.map(x => `<span class="chip">${esc(x.cab ? x.o.name : x.o.label)}</span>`).join('')}
       <button class="btn sm" data-act="groupFloor" ${picked.length > 1 && !same ? '' : 'disabled'}>${LINK_SVG} 묶기</button>
       ${picked.some(x => floorGrouped(x.o)) ? '<button class="btn ghost sm" data-act="ungroupFloor">묶음 풀기</button>' : ''}
+      ${picked.length ? `<button class="btn ghost sm" data-act="rotFloor" data-k="${picked[0].k}">${ROT_SVG} 함께 90° 돌리기</button>` : ''}
       <button class="btn ghost sm" data-act="fmultiDone">고르기 끝내기</button>
       <span class="hint">고른 것 중 하나를 끌면 함께 옮겨져요. 묶어 두면 고르지 않아도 함께 움직여요.</span></div>`;
   }
@@ -180,10 +182,12 @@ function renderRoom() {
   const fcls = (k, o) => `${ui.fsel.includes(k) ? 'picked' : ''} ${selGroup && o.group === selGroup && o !== selF ? 'gsel' : ''}`;
   const gtag = o => floorGrouped(o) ? `<b class="ftag" title="묶음 ${floorGroupNo(o.group)}">${LINK_SVG}${floorGroupNo(o.group)}</b>` : '';
   const f = selF;
+  const rotBtn = (k, name) => `<button class="rotbtn" data-act="rotFloor" data-k="${k}" title="시계 방향 90° 돌리기" aria-label="${esc(name)} 90도 돌리기">${ROT_SVG}</button>`;
   if (f) {
     h += `<div class="toolbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
     <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><input class="stepnum" id="furn-w" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.w}" data-ch="stepSet" data-a="furnSize" data-k="w" data-cur="${f.w}" aria-label="가로 (숫자 입력)"><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
     <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><input class="stepnum" id="furn-h" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.h}" data-ch="stepSet" data-a="furnSize" data-k="h" data-cur="${f.h}" aria-label="세로 (숫자 입력)"><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
+    <button class="btn ghost sm" data-act="rotFloor" data-k="f:${f.id}">${ROT_SVG} 90° 돌리기</button>
     <button class="btn ghost sm" data-act="furnLock" aria-pressed="${!!f.locked}">${LOCK_SVG} ${f.locked ? '잠김' : '위치 잠그기'}</button>
     ${floorGrouped(f) ? `<span class="grprow sm">${LINK_SVG}<span><b>묶음 ${floorGroupNo(f.group)}</b> · ${floorGroup(f.group).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroupFloor" data-id="${f.group}">묶음 풀기</button></span>` : ''}
     <button class="btn danger sm" data-act="furnDel">삭제</button><button class="btn ghost sm" data-act="furnClose">닫기</button></div>`;
@@ -192,17 +196,20 @@ function renderRoom() {
   h += `<div class="floor-scroll"><div class="floor" style="width:${R.w * U}px;height:${R.h * U}px;--u:${U}px">`;
   M().furniture.forEach(f => {
     const lk = L || f.locked;
-    h += `<div class="furn ${f.type} ${ui.furn === f.id ? 'sel' : ''} ${fcls('f:' + f.id, f)} ${q ? 'dim' : ''} ${lk ? 'locked' : ''}" data-drag="furn" data-id="${f.id}" style="left:${f.x * U}px;top:${f.y * U}px;width:${f.w * U}px;height:${f.h * U}px">${f.locked ? LOCK_SVG : ''}${esc(f.label)}${gtag(f)}</div>`;
+    h += `<div class="furn ${f.type} ${ui.furn === f.id ? 'sel' : ''} ${fcls('f:' + f.id, f)} ${q ? 'dim' : ''} ${lk ? 'locked' : ''}" data-drag="furn" data-id="${f.id}" style="left:${f.x * U}px;top:${f.y * U}px;width:${f.w * U}px;height:${f.h * U}px">${f.locked ? LOCK_SVG : ''}${esc(f.label)}${gtag(f)}${lk ? '' : rotBtn('f:' + f.id, f.label)}</div>`;
   });
   cabList().forEach(cab => {
     const ft = cabFoot(cab), m = q ? matchCount(cab, q) : 0, w = conflicts(cab).length, lk = L || cab.locked;
-    const iw = ft.w * U - 8, ih = ft.h * U - 29;
-    h += `<div class="cabcard ${fcls('c:' + cab.id, cab)} ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
-      <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${gtag(cab)}${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}</div>
+    // 돌린 실험장: 이름 띠(벽 쪽)가 위→오른쪽→아래→왼쪽으로 가고, 블록 자리도 같이 돌아요. 글자는 늘 바로 서 있어요
+    const rot = rotOf(cab), side = rot % 180 !== 0, iw = ft.w * U - (side ? 29 : 8), ih = ft.h * U - (side ? 8 : 29);
+    const place = b => { const u = b.c / cab.cols, v = b.r / cab.rows, uw = b.w / cab.cols, vh = b.h / cab.rows;
+      return rot === 90 ? [1 - v - vh, u, vh, uw] : rot === 180 ? [1 - u - uw, 1 - v - vh, uw, vh] : rot === 270 ? [v, 1 - u - uw, vh, uw] : [u, v, uw, vh]; };
+    h += `<div class="cabcard ${rot ? 'rot' + rot : ''} ${fcls('c:' + cab.id, cab)} ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
+      <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${gtag(cab)}${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}${lk ? '' : rotBtn('c:' + cab.id, cab.name)}</div>
       <div class="mini">${cab.blocks.map(b => {
-        const c = cat(b.cat), bw = b.w / cab.cols * iw, bh = b.h / cab.rows * ih;
+        const c = cat(b.cat), [px, py, pw, ph] = place(b), bw = pw * iw, bh = ph * ih;
         const N = shelvesOf(b), tip = N > 1 ? `${b.label}\n${shelfOrder(N).map(n => `${n}단: ${b.items.filter(i => shelfNo(b, i) === n).map(i => i.name).join(', ') || '비어 있음'}`).join('\n')}` : `${b.label} — ${b.items.map(i => i.name).join(', ') || '비어 있음'}`;
-        return `<span class="${q && !blockMatch(b, q, roomOf(cab)) ? 'fade' : ''}" title="${esc(tip)}" style="left:${b.c / cab.cols * 100}%;top:${b.r / cab.rows * 100}%;width:${b.w / cab.cols * 100}%;height:${b.h / cab.rows * 100}%;background-color:${c.color};color:${ink(c.color)}${N > 1 ? `;--sh:${N}` : ''}" ${N > 1 ? 'data-sh' : ''}>${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
+        return `<span class="${q && !blockMatch(b, q, roomOf(cab)) ? 'fade' : ''}" title="${esc(tip)}" style="left:${px * 100}%;top:${py * 100}%;width:${pw * 100}%;height:${ph * 100}%;background-color:${c.color};color:${ink(c.color)}${N > 1 ? `;--sh:${N}` : ''}" ${N > 1 ? (side ? 'data-sh="v"' : 'data-sh') : ''}>${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
       }).join('')}</div></div>`;
   });
   const meters = Math.max(1, Math.min(4, Math.floor(R.w / 2 / 3)));
@@ -236,6 +243,7 @@ function renderCab() {
    <button class="btn ghost sm" data-act="multiToggle" aria-pressed="${ui.multi}">${SEL_SVG} ${ui.multi ? '고르는 중' : '여러 블록 고르기'}</button>
    ${(() => { const ft = cabFoot(cab); return `<span class="stepper" title="배치도에서 차지하는 크기 (격자 1칸 = 50 cm)"><span>배치도 가로</span><button data-act="cabFloor" data-k="w" data-d="-0.5" aria-label="배치도 가로 줄이기">−</button><input class="stepnum" id="cab-fw" type="number" inputmode="decimal" min="2" step="0.5" value="${ft.w}" data-ch="stepSet" data-a="cabFloor" data-k="w" data-cur="${ft.w}" aria-label="배치도 가로 (숫자 입력)"><button data-act="cabFloor" data-k="w" data-d="0.5" aria-label="배치도 가로 늘이기">＋</button></span>
    <span class="stepper" title="배치도에서 차지하는 크기 (격자 1칸 = 50 cm)"><span>세로</span><button data-act="cabFloor" data-k="h" data-d="-0.5" aria-label="배치도 세로 줄이기">−</button><input class="stepnum" id="cab-fh" type="number" inputmode="decimal" min="2" step="0.5" value="${ft.h}" data-ch="stepSet" data-a="cabFloor" data-k="h" data-cur="${ft.h}" aria-label="배치도 세로 (숫자 입력)"><button data-act="cabFloor" data-k="h" data-d="0.5" aria-label="배치도 세로 늘이기">＋</button></span>${cab.fw ? '<button class="linkbtn" data-act="cabFloorAuto">칸 수에 맞추기</button>' : ''}`; })()}
+   <button class="btn ghost sm" data-act="rotFloor" data-k="c:${cab.id}" title="배치도에서 시계 방향 90° 돌리기">${ROT_SVG} 배치도 방향 ${rotOf(cab)}°</button>
    <button class="btn ghost sm" data-act="cabLock" aria-pressed="${!!cab.locked}">${LOCK_SVG} ${cab.locked ? '배치도 위치 잠김' : '배치도 위치 잠그기'}</button>
    ${rooms().length > 1 ? `<label class="minl movesel">놓인 곳<select id="cab-room" class="field" data-ch="cabRoom">${rooms().map(r => `<option value="${r.id}" ${r.id === roomOf(cab) ? 'selected' : ''}>${esc(r.roomName)}</option>`).join('')}</select></label>` : ''}
    <button class="btn ghost sm" data-act="copyCab">${COPY_SVG} ${T('cab')} 복사</button>

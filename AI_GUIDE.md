@@ -155,12 +155,13 @@ LICENSE           MIT 이용 조건
 { version: 3, siteTitle,
   rooms: [{ id, roomName, order, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm
     categories: [{ id, name, color: '#rrggbb', hazard: ''|'acid'|'base'|'oxidizer'|'flammable'|'toxic' }],
-    furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked, group }],
+    furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked, group }],   // 가구 돌리기 = w, h 바꾸기(rot 없음)
     layoutLocked: false, terms: { room, cab, bench, desk, sink }, preset: 'science'|'maker'|'music'|…|'custom', safety: true }] }
 
 // cabinets/{id}   — 보관장 하나 (roomId = 놓인 특별실, group = 배치도 묶음. 같은 특별실의 가구 group과 같은 값이면 함께 움직여요)
 { id, roomId, group, name, cols, rows /* 1~MAX_CELLS(20) */, x, y, locked, order,
   fw, fh,   // (선택) 배치도에서 차지하는 크기(바닥 격자 칸, 0.5 단위). 없으면 cabFootAuto(cab) = 칸 수로 계산하되 8칸 크기까지만. 크기는 항상 cabFoot(cab)으로 읽어요
+  rot,      // (선택) 배치도 방향 90|180|270 (시계 방향, 0이면 없음). rotOf(cab)로 읽어요. cabFoot = 돌린 뒤 크기, cabFoot0 = 돌리기 전 크기(fw, fh 기준). 이름 띠 쪽이 벽(뒤)
   blocks: [{ id, c, r, w, h, label, cat, shelves: 1~4, group: ''|groupId,   // c,r = 칸 위치(0부터), w,h = 차지하는 칸 수, shelves = 칸 안의 단 수, group = 같은 값끼리 함께 움직이는 묶음(2개 이상일 때만)
     items: [{ id, name, qty, unit, min: ''|number, expiry: 'YYYY-MM-DD'|'', cat: ''(블록 분류와 같음)|catId,
               cas, msds, ghs: ['GHS01'…'GHS09'], photoAt: ''|ms(사진이 있으면 올린 시각), shelf: 1~4(1 = 맨 아래 단) }] }] }
