@@ -5,7 +5,7 @@ import {
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
   fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
   rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope,
-  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES, MAX_CELLS, groupOf, isGrouped, groupNo,
+  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES, MAX_CELLS, FLOOR_MIN, FLOOR_MAX, groupOf, isGrouped, groupNo,
   floorItems, floorGroup, floorGrouped, floorGroupNo
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
@@ -158,7 +158,8 @@ function renderGate() {
 
 function renderRoom() {
   const el = $('#v-room'), R = M().room, q = ui.q.trim(), L = layoutLocked();
-  const U = ui.U = Math.max(24, Math.floor((el.clientWidth - 12) / R.w));
+  // 바닥이 아주 넓으면 격자 칸을 조금 작게(최소 16px) 그리고, 넘치면 옆으로 밀어서 봐요
+  const U = ui.U = Math.max(R.w > 48 ? 16 : 24, Math.floor((el.clientWidth - 12) / R.w));
   let h = clipBar('room') + `<div class="toolbar"><button class="btn" data-act="addCab">＋ ${T('cab')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="bench">＋ ${T('bench')}</button>
     <button class="btn ghost" data-act="addFurn" data-type="desk">＋ ${T('desk')}</button>
@@ -185,8 +186,8 @@ function renderRoom() {
   const rotBtn = (k, name) => `<button class="rotbtn" data-act="rotFloor" data-k="${k}" title="시계 방향 90° 돌리기" aria-label="${esc(name)} 90도 돌리기">${ROT_SVG}</button>`;
   if (f) {
     h += `<div class="toolbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
-    <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><input class="stepnum" id="furn-w" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.w}" data-ch="stepSet" data-a="furnSize" data-k="w" data-cur="${f.w}" aria-label="가로 (숫자 입력)"><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
-    <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><input class="stepnum" id="furn-h" type="number" inputmode="decimal" min="1" max="48" step="0.5" value="${f.h}" data-ch="stepSet" data-a="furnSize" data-k="h" data-cur="${f.h}" aria-label="세로 (숫자 입력)"><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
+    <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><input class="stepnum" id="furn-w" type="number" inputmode="decimal" min="1" max="${R.w}" step="0.5" value="${f.w}" data-ch="stepSet" data-a="furnSize" data-k="w" data-cur="${f.w}" aria-label="가로 (숫자 입력)"><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
+    <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><input class="stepnum" id="furn-h" type="number" inputmode="decimal" min="1" max="${R.h}" step="0.5" value="${f.h}" data-ch="stepSet" data-a="furnSize" data-k="h" data-cur="${f.h}" aria-label="세로 (숫자 입력)"><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="rotFloor" data-k="f:${f.id}">${ROT_SVG} 90° 돌리기</button>
     <button class="btn ghost sm" data-act="furnLock" aria-pressed="${!!f.locked}">${LOCK_SVG} ${f.locked ? '잠김' : '위치 잠그기'}</button>
     ${floorGrouped(f) ? `<span class="grprow sm">${LINK_SVG}<span><b>묶음 ${floorGroupNo(f.group)}</b> · ${floorGroup(f.group).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroupFloor" data-id="${f.group}">묶음 풀기</button></span>` : ''}
@@ -463,8 +464,8 @@ function renderSet() {
     ${confirmBtn('catDel', c.id, '삭제', use[c.id] ? `${use[c.id]}곳 사용 중 · 삭제` : '정말 삭제')}</div>`).join('')}
    <div><button class="btn ghost" data-act="catAdd">＋ 분류 추가</button></div></div>
   <div class="panel"><h3>${T('room')} 바닥</h3><p class="help">격자 1칸은 약 50 cm예요.</p>
-    <div class="sizes"><span class="stepper"><span>가로</span><button data-act="roomSize" data-k="w" data-d="-1" aria-label="가로 줄이기">−</button><input class="stepnum" id="room-w" type="number" inputmode="decimal" min="10" max="48" step="1" value="${M().room.w}" data-ch="stepSet" data-a="roomSize" data-k="w" data-cur="${M().room.w}" aria-label="바닥 가로 (숫자 입력)"><button data-act="roomSize" data-k="w" data-d="1" aria-label="가로 늘이기">＋</button></span>
-    <span class="stepper"><span>세로</span><button data-act="roomSize" data-k="h" data-d="-1" aria-label="세로 줄이기">−</button><input class="stepnum" id="room-h" type="number" inputmode="decimal" min="10" max="48" step="1" value="${M().room.h}" data-ch="stepSet" data-a="roomSize" data-k="h" data-cur="${M().room.h}" aria-label="바닥 세로 (숫자 입력)"><button data-act="roomSize" data-k="h" data-d="1" aria-label="세로 늘이기">＋</button></span>
+    <div class="sizes"><span class="stepper"><span>가로</span><button data-act="roomSize" data-k="w" data-d="-1" aria-label="가로 줄이기">−</button><input class="stepnum" id="room-w" type="number" inputmode="decimal" min="${FLOOR_MIN}" max="${FLOOR_MAX}" step="1" value="${M().room.w}" data-ch="stepSet" data-a="roomSize" data-k="w" data-cur="${M().room.w}" aria-label="바닥 가로 (숫자 입력)"><button data-act="roomSize" data-k="w" data-d="1" aria-label="가로 늘이기">＋</button></span>
+    <span class="stepper"><span>세로</span><button data-act="roomSize" data-k="h" data-d="-1" aria-label="세로 줄이기">−</button><input class="stepnum" id="room-h" type="number" inputmode="decimal" min="${FLOOR_MIN}" max="${FLOOR_MAX}" step="1" value="${M().room.h}" data-ch="stepSet" data-a="roomSize" data-k="h" data-cur="${M().room.h}" aria-label="바닥 세로 (숫자 입력)"><button data-act="roomSize" data-k="h" data-d="1" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="toggleLayoutLock" aria-pressed="${layoutLocked()}">${LOCK_SVG} ${layoutLocked() ? '배치 잠금 켜짐' : '배치 전체 잠그기'}</button></div></div>
   </div>`;
 }

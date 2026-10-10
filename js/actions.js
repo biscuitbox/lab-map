@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, MAX_CELLS, cabFoot0, rotOf, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES, MAX_CELLS, FLOOR_MIN, FLOOR_MAX, cabFoot0, rotOf, groupOf, isGrouped, floorItems, floorGroup, floorGrouped,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -269,9 +269,11 @@ const ACT = {
     if (ui.newCat === id) ui.newCat = fb; saveMeta(); render();
   },
   roomSize: t => {
-    const k = t.dataset.k, R = M().room; { const want = R[k] + +t.dataset.d; R[k] = clamp(want, 10, 48); if (want !== R[k]) toast('바닥은 가로·세로 10~48칸(5~24 m)까지 정할 수 있어요'); }
+    const k = t.dataset.k, R = M().room; { const want = R[k] + +t.dataset.d; R[k] = clamp(want, FLOOR_MIN, FLOOR_MAX); if (want !== R[k]) toast(`바닥은 가로·세로 ${FLOOR_MIN}~${FLOOR_MAX}칸(${FLOOR_MIN / 2}~${FLOOR_MAX / 2} m)까지 정할 수 있어요`); }
     cabList().forEach(c => { const ft = cabFoot(c), x = clamp(c.x, 0, Math.max(0, R.w - ft.w)), y = clamp(c.y, 0, Math.max(0, R.h - ft.h)); if (x !== c.x || y !== c.y) { c.x = x; c.y = y; saveCab(c.id); } });
     M().furniture.forEach(f => { f.x = clamp(f.x, 0, Math.max(0, R.w - f.w)); f.y = clamp(f.y, 0, Math.max(0, R.h - f.h)); });
+    const big = floorItems().filter(x => { const s = x.cab ? cabFoot(x.o) : x.o; return s.w > R.w || s.h > R.h; });
+    if (big.length) toast(`바닥보다 큰 것이 ${big.length}개 있어요. 크기를 줄이거나 바닥을 넓혀 주세요.`);
     saveMeta(); render();
   },
   copyJson: () => { const ta = $('#io-out'), fb = () => { ta.focus(); ta.select(); toast('선택해 두었어요. Ctrl+C로 복사하세요'); }; try { navigator.clipboard.writeText(ta.value).then(() => toast('데이터를 복사했어요'), fb); } catch (e) { fb(); } },

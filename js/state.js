@@ -189,6 +189,8 @@ function lin(v) { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055)
 export function ink(hex) { const n = parseInt(String(hex).replace('#', ''), 16); if (isNaN(n)) return '#111'; const L = .2126 * lin(n >> 16 & 255) + .7152 * lin(n >> 8 & 255) + .0722 * lin(n & 255); return L > .33 ? '#141a18' : '#ffffff'; }
 export const snap = v => Math.round(v * 2) / 2;
 export const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+/* 바닥 크기(격자 칸, 1칸 ≈ 50 cm). 사실상 제한 없이 2 m ~ 200 m */
+export const FLOOR_MIN = 4, FLOOR_MAX = 400;
 /* 보관장 칸 수 한도 */
 export const MAX_CELLS = 20;
 /* 배치도에서 보관장이 차지하는 크기(바닥 격자 칸). 직접 정했으면(fw, fh) 그 값, 아니면 칸 수로 계산하되 8칸 크기에서 더 커지지 않아요 */

@@ -153,7 +153,7 @@ LICENSE           MIT 이용 조건
 ```js
 // meta/main   — 사이트 설정과 특별실 목록 (규칙상 meta 아래 문서이므로 새 규칙이 필요 없어요)
 { version: 3, siteTitle,
-  rooms: [{ id, roomName, order, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm
+  rooms: [{ id, roomName, order, room: { w: 24, h: 15 },        // 바닥 격자 1칸 ≈ 50cm, FLOOR_MIN~FLOOR_MAX(4~400)칸
     categories: [{ id, name, color: '#rrggbb', hazard: ''|'acid'|'base'|'oxidizer'|'flammable'|'toxic' }],
     furniture: [{ id, type: 'bench'|'desk'|'sink', label, x, y, w, h, locked, group }],   // 가구 돌리기 = w, h 바꾸기(rot 없음)
     layoutLocked: false, terms: { room, cab, bench, desk, sink }, preset: 'science'|'maker'|'music'|…|'custom', safety: true }] }
