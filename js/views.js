@@ -4,10 +4,19 @@ import {
   itemStatus, dday, hazardsOf, conflicts, canPlace, norm, itemMatch, blockMatch, matchCount, openLoans, loanedQty, stats,
   pname, qrSvg, blockUrl, allRows, LIST_F, yearUsage, exportData, HZ, GHS, LOCK_SVG, myEmail, siteTitle,
   fmtTime, backupDiff, KEEP_DAYS, T, j, safetyOn, PRESETS, TERM_LABELS,
-  rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope
+  rooms, roomById, roomOf, curRoom, roomMatchCount, loanRoom, inScope,
+  shelvesOf, shelfNo, shelfTxt, shelfName, MAX_SHELVES
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
 
+/* 단 순서: 화면은 위에서 아래로 그리므로 높은 단부터 (3단, 2단, 1단) */
+const shelfOrder = N => Array.from({ length: N }, (_, i) => N - i);
+/* 라벨에 넣을 물품 이름: 단이 여러 개면 '3단 ○○ / 2단 ○○'처럼 단별로 */
+function labelItems(b, max, tag) {
+  const N = shelvesOf(b);
+  if (N < 2) return `<${tag}>${esc(b.items.slice(0, max).map(i => i.name).join(', '))}${b.items.length > max ? ` 외 ${b.items.length - max}종` : ''}</${tag}>`;
+  return shelfOrder(N).map(n => { const names = b.items.filter(i => shelfNo(b, i) === n).map(i => i.name); return `<${tag} class="lshelf"><b>${n}단</b> ${esc(names.slice(0, 3).join(', ') || '—')}${names.length > 3 ? ` 외 ${names.length - 3}` : ''}</${tag}>`; }).join('');
+}
 const CHEV = '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="m2 2 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const VIEWS = ['room', 'cab', 'list', 'loans', 'stats', 'qr', 'backup', 'set'];
 
@@ -79,7 +88,7 @@ function renderLightbox() {
   if (!it || !it.photoAt) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = `<div class="box" role="dialog" aria-modal="true" aria-label="${esc(it.name)} 사진">${photoImg(it)}
-    <div class="lbl" style="font-size:13px"><span><b style="color:var(--ink)">${esc(it.name)}</b> · ${esc(cab.name)} › ${esc(b.label)}</span></div>
+    <div class="lbl" style="font-size:13px"><span><b style="color:var(--ink)">${esc(it.name)}</b> · ${esc(cab.name)} › ${esc(b.label)}${shelfTxt(b, it)}</span></div>
     <div class="sizes"><label class="btn ghost sm" for="ph-lb-${it.id}">사진 바꾸기</label><input id="ph-lb-${it.id}" type="file" accept="image/*" data-photo-up="${it.id}" hidden>
     ${confirmBtn('delPhoto', it.id, '사진 지우기', '한 번 더 누르면 지워요')}<button class="btn sm" data-act="closePhoto" style="margin-left:auto">닫기</button></div></div>`;
 }
@@ -160,8 +169,8 @@ function renderRoom() {
       <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}</div>
       <div class="mini">${cab.blocks.map(b => {
         const c = cat(b.cat), bw = b.w / cab.cols * iw, bh = b.h / cab.rows * ih;
-        const tip = `${b.label} — ${b.items.map(i => i.name).join(', ') || '비어 있음'}`;
-        return `<span class="${q && !blockMatch(b, q, roomOf(cab)) ? 'fade' : ''}" title="${esc(tip)}" style="left:${b.c / cab.cols * 100}%;top:${b.r / cab.rows * 100}%;width:${b.w / cab.cols * 100}%;height:${b.h / cab.rows * 100}%;background:${c.color};color:${ink(c.color)}">${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
+        const N = shelvesOf(b), tip = N > 1 ? `${b.label}\n${shelfOrder(N).map(n => `${n}단: ${b.items.filter(i => shelfNo(b, i) === n).map(i => i.name).join(', ') || '비어 있음'}`).join('\n')}` : `${b.label} — ${b.items.map(i => i.name).join(', ') || '비어 있음'}`;
+        return `<span class="${q && !blockMatch(b, q, roomOf(cab)) ? 'fade' : ''}" title="${esc(tip)}" style="left:${b.c / cab.cols * 100}%;top:${b.r / cab.rows * 100}%;width:${b.w / cab.cols * 100}%;height:${b.h / cab.rows * 100}%;background-color:${c.color};color:${ink(c.color)}${N > 1 ? `;--sh:${N}` : ''}" ${N > 1 ? 'data-sh' : ''}>${bw >= 26 && bh >= 14 ? `<em>${esc(b.label)}</em>` : ''}${bw >= 40 && bh >= 32 ? `<small>${b.items.length}종</small>` : ''}</span>`;
       }).join('')}</div></div>`;
   });
   const meters = Math.max(1, Math.min(4, Math.floor(R.w / 2 / 3)));
@@ -197,15 +206,15 @@ function renderCab() {
    <div class="cab-inner" style="width:${cab.cols * S2}px;height:${cab.rows * S2}px;background-size:100% ${S2}px">`;
   const occ = new Set(); cab.blocks.forEach(b => { for (let r = b.r; r < b.r + b.h; r++) for (let c = b.c; c < b.c + b.w; c++) occ.add(r + ',' + c); });
   for (let r = 0; r < cab.rows; r++) for (let c = 0; c < cab.cols; c++) if (!occ.has(r + ',' + c))
-    h += `<button class="slot" data-act="addBlock" data-c="${c}" data-r="${r}" aria-label="${r + 1}단 ${c + 1}번째 칸에 블록 붙이기" style="left:${c * S2 + 4}px;top:${r * S2 + 4}px;width:${S2 - 8}px;height:${S2 - 8}px">＋</button>`;
+    h += `<button class="slot" data-act="addBlock" data-c="${c}" data-r="${r}" aria-label="위에서 ${r + 1}번째 줄, 왼쪽에서 ${c + 1}번째 칸에 블록 붙이기" style="left:${c * S2 + 4}px;top:${r * S2 + 4}px;width:${S2 - 8}px;height:${S2 - 8}px">＋</button>`;
   cab.blocks.forEach(b => {
     const c = cat(b.cat), hz = [...hazardsOf(b)].map(x => HZ[x]).join('·'); let low = 0, ex = 0;
     b.items.forEach(it => { const s = itemStatus(it); if (s.includes('low')) low++; if (s.includes('expired') || s.includes('soon')) ex++; });
-    const hit = q && blockMatch(b, q, roomOf(cab)), room = Math.max(0, Math.floor((b.h * S2 - 62) / 16));
+    const hit = q && blockMatch(b, q, roomOf(cab)), room = Math.max(0, Math.floor((b.h * S2 - 62) / 16)), N = shelvesOf(b);
     h += `<div class="block ${ui.block === b.id ? 'sel' : ''} ${cids.has(b.id) ? 'conf' : ''} ${q ? (hit ? 'hit' : 'fade') : ''}" data-drag="block" data-id="${b.id}" role="button" tabindex="0" aria-label="${esc(b.label)} 블록" style="left:${b.c * S2 + 3}px;top:${b.r * S2 + 3}px;width:${b.w * S2 - 6}px;height:${b.h * S2 - 6}px;background:${c.color};color:${ink(c.color)}">
-      <div class="bl">${esc(b.label)}</div><div class="bm">${b.items.length}종${hz && safetyOn() ? ' · ' + hz : ''}</div>
-      ${b.items.slice(0, room).map(it => `<div class="bn">${esc(it.name)}</div>`).join('')}
-      <div class="flags">${low ? `<span class="f low">부족 ${low}</span>` : ''}${ex ? `<span class="f exp">기한 ${ex}</span>` : ''}${cids.has(b.id) ? '<span class="f cf">보관 주의</span>' : ''}</div></div>`;
+      <div class="bl">${esc(b.label)}</div><div class="bm">${b.items.length}종${N > 1 ? ` · ${N}단` : ''}${hz && safetyOn() ? ' · ' + hz : ''}</div>
+      ${N > 1 ? `<div class="shelves" style="--sh:${N}">${shelfOrder(N).map(n => { const names = b.items.filter(i => shelfNo(b, i) === n).map(i => i.name); return `<div class="shelf"><i>${n}</i><span>${esc(names.join(', '))}</span></div>`; }).join('')}</div>` : b.items.slice(0, room).map(it => `<div class="bn">${esc(it.name)}</div>`).join('')}
+      <div class="flags ${N > 1 ? 'abs' : ''}">${low ? `<span class="f low">부족 ${low}</span>` : ''}${ex ? `<span class="f exp">기한 ${ex}</span>` : ''}${cids.has(b.id) ? '<span class="f cf">보관 주의</span>' : ''}</div></div>`;
   });
   h += `</div></div></div>`;
   if (conf.length) h += `<div class="warns" id="warns">${conf.map(c => `<div class="warn-row"><b>!</b><span><b>${esc(c.where)}</b> — ${esc(c.msg)}</span></div>`).join('')}</div>`;
@@ -218,17 +227,20 @@ function idlePanel() {
   <ul class="help"><li>점선 <b>＋</b> 칸을 누르면 위 분류 색의 블록이 붙어요.</li><li>블록을 끌면 다른 빈 칸으로 옮겨져요.</li><li>블록을 누르면 크기·색·물품·QR을 다룰 수 있어요.</li>${safetyOn() ? `<li>산·염기, 산화제·인화성처럼 같이 두면 안 되는 물질이 같은 블록에 있거나 맞닿으면 경고해요. GHS 인화성·산화성·급성 독성 표시도 검사에 쓰여요.</li>` : ''}</ul></aside>`;
 }
 function blockPanel(cab, b) {
-  const c = cat(b.cat), can = (dw, dh) => canPlace(cab, b, b.c, b.r, b.w + dw, b.h + dh), qr = qrSvg(blockUrl(b.id));
+  const c = cat(b.cat), can = (dw, dh) => canPlace(cab, b, b.c, b.r, b.w + dw, b.h + dh), qr = qrSvg(blockUrl(b.id)), N = shelvesOf(b);
   return `<aside class="panel" id="blockPanel">
   <div class="ph"><i class="sw" style="background:${c.color};width:18px;height:18px"></i><input id="blk-label" data-ch="blkLabel" value="${esc(b.label)}" aria-label="블록 이름"><button class="x" data-act="closeBlk" aria-label="닫기">×</button></div>
   <div class="lbl">분류 · 블록 색</div>
   <div class="chips">${M().categories.map(x => `<button class="chip" data-act="blkCat" data-id="${x.id}" aria-pressed="${b.cat === x.id}"><i class="sw" style="background:${x.color}"></i>${esc(x.name)}</button>`).join('')}</div>
   <div class="lbl">크기 (칸)</div>
   <div class="sizes"><span class="stepper"><span>가로</span><button data-act="blkSize" data-k="w" data-d="-1" ${b.w > 1 ? '' : 'disabled'} aria-label="가로 줄이기">−</button><b>${b.w}</b><button data-act="blkSize" data-k="w" data-d="1" ${can(1, 0) ? '' : 'disabled'} aria-label="가로 늘이기">＋</button></span>
-  <span class="stepper"><span>세로</span><button data-act="blkSize" data-k="h" data-d="-1" ${b.h > 1 ? '' : 'disabled'} aria-label="세로 줄이기">−</button><b>${b.h}</b><button data-act="blkSize" data-k="h" data-d="1" ${can(0, 1) ? '' : 'disabled'} aria-label="세로 늘이기">＋</button></span></div>
+  <span class="stepper"><span>세로</span><button data-act="blkSize" data-k="h" data-d="-1" ${b.h > 1 ? '' : 'disabled'} aria-label="세로 줄이기">−</button><b>${b.h}</b><button data-act="blkSize" data-k="h" data-d="1" ${can(0, 1) ? '' : 'disabled'} aria-label="세로 늘이기">＋</button></span>
+  <span class="stepper"><span>칸 안의 단</span><button data-act="blkShelves" data-d="-1" ${N > 1 ? '' : 'disabled'} aria-label="단 줄이기">−</button><b>${N}</b><button data-act="blkShelves" data-d="1" ${N < MAX_SHELVES ? '' : 'disabled'} aria-label="단 늘리기">＋</button></span></div>
+  ${N > 1 ? '<p class="help" style="font-size:12px">단은 맨 아래가 1단이에요.</p>' : ''}
   <div class="lbl"><span>물품 ${b.items.length}종</span><span>최소 수량 아래면 ‘부족’</span></div>
-  <div class="items">${b.items.map(it => itemCard(it, b)).join('') || '<p class="help">아직 물품이 없어요.</p>'}</div>
-  <div class="addrow"><input id="new-item" placeholder="물품 이름 (예: 염산 1 M)" aria-label="새 물품 이름"><button class="btn" data-act="addItem">추가</button></div>
+  ${N > 1 ? shelfOrder(N).map(n => { const its = b.items.filter(i => shelfNo(b, i) === n); return `<div class="shelfgrp"><div class="shelfhead"><b>${shelfName(n, N)}</b><span>${its.length}종</span></div><div class="items">${its.map(it => itemCard(it, b)).join('') || '<p class="help">비어 있어요.</p>'}</div></div>`; }).join('')
+    : `<div class="items">${b.items.map(it => itemCard(it, b)).join('') || '<p class="help">아직 물품이 없어요.</p>'}</div>`}
+  <div class="addrow">${N > 1 ? `<select id="new-shelf" class="field" aria-label="넣을 단">${shelfOrder(N).map(n => `<option value="${n}" ${Math.min(ui.newShelf || 1, N) === n ? 'selected' : ''}>${n}단</option>`).join('')}</select>` : ''}<input id="new-item" placeholder="물품 이름 (예: 염산 1 M)" aria-label="새 물품 이름"><button class="btn" data-act="addItem">추가</button></div>
   ${qr ? `<div class="lbl">이 칸의 QR</div><div class="qrbox"><div class="qr">${qr}</div><p class="help">휴대폰으로 찍으면 이 블록이 바로 열려요. 승인된 선생님만 내용을 볼 수 있어요.</p></div>` : ''}
   <div>${confirmBtn('delBlock', b.id, '블록 삭제', b.items.length ? `물품 ${b.items.length}종도 지워져요 · 한 번 더` : '한 번 더 누르면 삭제')}</div></aside>`;
 }
@@ -241,6 +253,7 @@ function itemCard(it, b) {
    <input id="it-${it.id}-unit" class="field unit" data-ch="itUnit" data-id="${it.id}" value="${esc(it.unit)}" placeholder="단위" aria-label="단위">
    <label class="minl">최소<input id="it-${it.id}-min" class="field" type="number" min="0" data-ch="itMin" data-id="${it.id}" value="${esc(it.min)}"></label></div>
    <div class="r2"><label class="minl">유효기한<input id="it-${it.id}-exp" class="field" type="date" data-ch="itExp" data-id="${it.id}" value="${esc(it.expiry)}"></label>
+   ${shelvesOf(b) > 1 ? `<select id="it-${it.id}-shelf" class="field" data-ch="itShelf" data-id="${it.id}" aria-label="놓인 단">${shelfOrder(shelvesOf(b)).map(n => `<option value="${n}" ${shelfNo(b, it) === n ? 'selected' : ''}>${n}단</option>`).join('')}</select>` : ''}
    <select id="it-${it.id}-cat" class="field" data-ch="itCat" data-id="${it.id}" aria-label="물품 분류"><option value="">블록 분류와 같음</option>${M().categories.map(c => `<option value="${c.id}" ${it.cat === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
    <div class="r2">${ghsMarks(it.ghs)}${pills(it, s)}${lq ? `<span class="pill loan">대여 중 ${lq}</span>` : ''}
      <span style="margin-left:auto;display:inline-flex;gap:10px">${safetyOn() ? `<button class="linkbtn" data-act="toggleSafety" data-id="${it.id}">${open ? '안전 정보 닫기' : '안전 정보'}</button>` : ''}<label class="linkbtn" for="ph-${it.id}">${it.photoAt ? '사진 바꾸기' : '사진 넣기'}</label><input id="ph-${it.id}" type="file" accept="image/*" data-photo-up="${it.id}" hidden><button class="linkbtn" data-act="loanThis" data-id="${it.id}">대여</button></span></div>
@@ -262,7 +275,7 @@ function renderList() {
   <div class="tablewrap"><table><thead><tr><th>물품</th><th>분류</th><th>위치</th><th>수량</th><th>유효기한</th><th>상태</th></tr></thead><tbody>`;
   h += rows.map(r => `<tr><td><span style="display:inline-flex;align-items:center;gap:8px">${r.it.photoAt ? `<button class="thumb sm" data-act="openPhoto" data-id="${r.it.id}" aria-label="사진 보기">${photoImg(r.it)}</button>` : ''}<b style="font-weight:500">${esc(r.it.name)}</b></span> ${ghsMarks(r.it.ghs)}</td>
     <td><span style="display:inline-flex;align-items:center;gap:6px"><i class="sw" style="background:${r.c.color}"></i>${esc(r.c.name)}</span></td>
-    <td><button class="loc" data-act="goBlock" data-cab="${r.cab.id}" data-id="${r.b.id}">${roomPrefix(r.cab)}${esc(r.cab.name)} › ${esc(r.b.label)}</button></td>
+    <td><button class="loc" data-act="goBlock" data-cab="${r.cab.id}" data-id="${r.b.id}">${roomPrefix(r.cab)}${esc(r.cab.name)} › ${esc(r.b.label)}${shelfTxt(r.b, r.it)}</button></td>
     <td><span class="qcell"><button data-act="qty" data-id="${r.it.id}" data-d="-1" aria-label="빼기">−</button><span class="num" style="min-width:2.4em;text-align:center">${esc(r.it.qty)}</span><button data-act="qty" data-id="${r.it.id}" data-d="1" aria-label="더하기">＋</button><span class="muted">${esc(r.it.unit)}</span></span></td>
     <td class="num">${r.it.expiry ? `${esc(r.it.expiry)} <span class="muted">${dday(r.it.expiry)}</span>` : '<span class="muted">—</span>'}</td>
     <td>${r.s.length ? pills(r.it, r.s) : ''}${r.lq ? ` <span class="pill loan">대여 중 ${r.lq}</span>` : ''}${!r.s.length && !r.lq ? '<span class="pill ok">정상</span>' : ''}</td></tr>`).join('');
@@ -276,8 +289,8 @@ function renderLoans() {
   const due = new Date(TODAY); due.setDate(due.getDate() + 7);
   const open = openLoans().filter(l => inScope(loanRoom(l))).filter(l => !q || norm(l.itemName + l.who).includes(norm(q))).sort((a, b) => String(a.due || '9').localeCompare(String(b.due || '9')));
   const done = Object.values(S.loans).filter(l => l.returnedAt && inScope(loanRoom(l))).sort((a, b) => b.returnedAt - a.returnedAt).slice(0, 20);
-  const opts = cabList().map(cab => `<optgroup label="${esc(cab.name)}">${cab.blocks.flatMap(b => b.items.map(it => `<option value="${it.id}" ${ui.loanItem === it.id ? 'selected' : ''}>${esc(b.label)} › ${esc(it.name)} (보유 ${esc(it.qty)}${esc(it.unit)})</option>`)).join('')}</optgroup>`).join('');
-  const where = l => { const { cab, b } = locate(l.itemId); return cab ? `<button class="loc" data-act="goBlock" data-cab="${cab.id}" data-id="${b.id}">${roomPrefix(cab)}${esc(cab.name)} › ${esc(b.label)}</button>` : '<span class="muted">삭제된 물품</span>'; };
+  const opts = cabList().map(cab => `<optgroup label="${esc(cab.name)}">${cab.blocks.flatMap(b => b.items.map(it => `<option value="${it.id}" ${ui.loanItem === it.id ? 'selected' : ''}>${esc(b.label)}${shelfTxt(b, it)} › ${esc(it.name)} (보유 ${esc(it.qty)}${esc(it.unit)})</option>`)).join('')}</optgroup>`).join('');
+  const where = l => { const { cab, b, it } = locate(l.itemId); return cab ? `<button class="loc" data-act="goBlock" data-cab="${cab.id}" data-id="${b.id}">${roomPrefix(cab)}${esc(cab.name)} › ${esc(b.label)}${shelfTxt(b, it)}</button>` : '<span class="muted">삭제된 물품</span>'; };
   el.innerHTML = `${scopeChips() ? `<div class="toolbar">${scopeChips()}</div>` : ''}<div class="panel"><h3>대여 기록하기 · ${esc(M().roomName)}</h3>
    <div class="formgrid"><label>물품<select id="loan-item" class="field"><option value="">물품을 고르세요</option>${opts}</select></label>
    <label>수량<input id="loan-qty" class="field" type="number" min="1" value="1"></label>
@@ -327,13 +340,13 @@ function renderQr() {
    <div class="labels">${qrTargets().flatMap(cab => cab.blocks.map(b => {
      const c = cat(b.cat);
      return `<div class="label" style="border-left-color:${c.color}"><div class="qr">${qrSvg(blockUrl(b.id))}</div>
-     <div class="meta"><span class="muted">${esc(M().roomName)} › ${esc(cab.name)}</span><b>${esc(b.label)}</b><span class="muted">${esc(c.name)}</span><div>${esc(b.items.slice(0, 4).map(i => i.name).join(', '))}${b.items.length > 4 ? ` 외 ${b.items.length - 4}종` : ''}</div></div></div>`;
+     <div class="meta"><span class="muted">${esc(M().roomName)} › ${esc(cab.name)}</span><b>${esc(b.label)}</b><span class="muted">${esc(c.name)}</span>${labelItems(b, 4, 'div')}</div></div>`;
    })).join('') || '<p class="help">블록이 없어요.</p>'}</div>`;
 }
 export function labelsHtml(autoPrint) {
   const cards = qrTargets().flatMap(cab => cab.blocks.map(b => {
     const c = cat(b.cat); const g = [...new Set(b.items.flatMap(i => i.ghs || []))];
-    return `<div class="lab" style="border-left-color:${c.color}"><div class="q">${qrSvg(blockUrl(b.id))}</div><div class="t"><small>${esc(M().roomName)} · ${esc(cab.name)} · ${esc(c.name)}</small><b>${esc(b.label)}</b><p>${esc(b.items.slice(0, 6).map(i => i.name).join(', '))}${b.items.length > 6 ? ' 외' : ''}</p>${g.length ? `<p class="g">GHS: ${g.map(x => GHS[x] ? GHS[x][1] : x).join(', ')}</p>` : ''}</div></div>`;
+    return `<div class="lab" style="border-left-color:${c.color}"><div class="q">${qrSvg(blockUrl(b.id))}</div><div class="t"><small>${esc(M().roomName)} · ${esc(cab.name)} · ${esc(c.name)}</small><b>${esc(b.label)}</b>${labelItems(b, 6, 'p')}${g.length ? `<p class="g">GHS: ${g.map(x => GHS[x] ? GHS[x][1] : x).join(', ')}</p>` : ''}</div></div>`;
   })).join('');
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>${esc(siteTitle())} · ${esc(M().roomName)} QR 라벨</title><style>
 @page{size:A4;margin:10mm}body{font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;margin:16px;color:#111}
@@ -341,7 +354,7 @@ export function labelsHtml(autoPrint) {
 .sheet{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
 .lab{display:flex;gap:3mm;border:1px solid #999;border-left:5mm solid;border-radius:2mm;padding:2.5mm;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .q{width:24mm;flex:none}.q svg{width:100%;height:auto;display:block}
-.t{min-width:0;font-size:9pt;line-height:1.3}.t small{color:#555}.t b{display:block;font-size:12pt;margin:.5mm 0}.t p{margin:0}.g{color:#c00;margin-top:1mm!important}
+.t{min-width:0;font-size:9pt;line-height:1.3}.lshelf{margin:0}.lshelf b{display:inline;font-size:8pt;margin:0 1mm 0 0;color:#555}.t small{color:#555}.t b{display:block;font-size:12pt;margin:.5mm 0}.t p{margin:0}.g{color:#c00;margin-top:1mm!important}
 </style></head><body><p class="tip">인쇄(Ctrl+P)해서 오려 붙이세요. ${esc(siteTitle())} · ${esc(M().roomName)} · ${ymd(new Date())} 기준</p><div class="sheet">${cards}</div>${autoPrint ? '<script>addEventListener("load",function(){setTimeout(function(){print()},300)})<\/script>' : ''}</body></html>`;
 }
 
@@ -400,7 +413,7 @@ function trashName(t) {
 }
 function trashFrom(t) {
   const f = t.from || {};
-  if (t.type === 'item') return `${f.cabName || ''} › ${f.blockLabel || ''}`;
+  if (t.type === 'item') return `${f.cabName || ''} › ${f.blockLabel || ''}${f.block ? shelfTxt(f.block, t.data) : ''}`;
   if (t.type === 'block') return f.cabName || '';
   return '';
 }
@@ -419,8 +432,8 @@ function renderBackup() {
       const none = !d.cabsGone.length && !d.removed.length && !d.changed.length;
       h += none ? '<p class="help">이 백업 이후 사라지거나 수량이 바뀐 물품이 없어요.</p>' : '';
       if (d.cabsGone.length) h += `<h4>지금은 없는 ${T('cab')} ${d.cabsGone.length}개</h4>${d.cabsGone.map(c => `<div class="diffrow"><span class="nm">${esc(c.name)} <span class="muted">블록 ${c.blocks.length}개 · 물품 ${c.blocks.reduce((a, b) => a + b.items.length, 0)}종</span></span><button class="btn sm" data-act="cmpCab" data-id="${c.id}">${T('cab')} 되살리기</button></div>`).join('')}`;
-      if (d.removed.length) h += `<h4>지금은 없는 물품 ${d.removed.length}종</h4>${d.removed.map(x => `<div class="diffrow"><span class="nm">${esc(x.it.name)} <span class="muted">${esc(x.cab.name)} › ${esc(x.b.label)} · 당시 ${esc(x.it.qty)}${esc(x.it.unit)}</span></span><button class="btn sm" data-act="cmpItem" data-id="${x.it.id}">되살리기</button></div>`).join('')}`;
-      if (d.changed.length) h += `<h4>수량이 바뀐 물품 ${d.changed.length}종</h4>${d.changed.map(x => `<div class="diffrow"><span class="nm">${esc(x.it.name)} <span class="muted">${esc(x.now.cab.name)} › ${esc(x.now.b.label)}</span></span><span class="num">${esc(x.it.qty)} → ${esc(x.now.it.qty)}${esc(x.now.it.unit)}</span><button class="btn ghost sm" data-act="cmpQty" data-id="${x.it.id}">그때 수량으로</button></div>`).join('')}`;
+      if (d.removed.length) h += `<h4>지금은 없는 물품 ${d.removed.length}종</h4>${d.removed.map(x => `<div class="diffrow"><span class="nm">${esc(x.it.name)} <span class="muted">${esc(x.cab.name)} › ${esc(x.b.label)}${shelfTxt(x.b, x.it)} · 당시 ${esc(x.it.qty)}${esc(x.it.unit)}</span></span><button class="btn sm" data-act="cmpItem" data-id="${x.it.id}">되살리기</button></div>`).join('')}`;
+      if (d.changed.length) h += `<h4>수량이 바뀐 물품 ${d.changed.length}종</h4>${d.changed.map(x => `<div class="diffrow"><span class="nm">${esc(x.it.name)} <span class="muted">${esc(x.now.cab.name)} › ${esc(x.now.b.label)}${shelfTxt(x.now.b, x.now.it)}</span></span><span class="num">${esc(x.it.qty)} → ${esc(x.now.it.qty)}${esc(x.now.it.unit)}</span><button class="btn ghost sm" data-act="cmpQty" data-id="${x.it.id}">그때 수량으로</button></div>`).join('')}`;
       if (d.added) h += `<p class="help">이 백업 뒤에 새로 생긴 물품이 ${d.added}종 있어요. 하나씩 되살리면 새 물품은 그대로 남아요.</p>`;
       if (mgr) h += `<div class="sizes">${confirmBtn('cmpAll', 'x', '전체를 이 백업으로 되돌리기', `지금 ${T('cab')} 전체가 바뀌어요 · 한 번 더`)}<span class="hint">되돌리기 전 상태는 자동으로 한 번 더 백업해 둬요.</span></div>`;
     }

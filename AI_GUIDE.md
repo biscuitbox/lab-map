@@ -158,9 +158,10 @@ LICENSE           MIT 이용 조건
 
 // cabinets/{id}   — 보관장 하나 (roomId = 놓인 특별실)
 { id, roomId, name, cols, rows, x, y, locked, order,
-  blocks: [{ id, c, r, w, h, label, cat,              // c,r = 칸 위치(0부터), w,h = 차지하는 칸 수
+  blocks: [{ id, c, r, w, h, label, cat, shelves: 1~4,   // c,r = 칸 위치(0부터), w,h = 차지하는 칸 수, shelves = 칸 안의 단 수
     items: [{ id, name, qty, unit, min: ''|number, expiry: 'YYYY-MM-DD'|'', cat: ''(블록 분류와 같음)|catId,
-              cas, msds, ghs: ['GHS01'…'GHS09'], photoAt: ''|ms(사진이 있으면 올린 시각) }] }] }
+              cas, msds, ghs: ['GHS01'…'GHS09'], photoAt: ''|ms(사진이 있으면 올린 시각), shelf: 1~4(1 = 맨 아래 단) }] }] }
+// 단은 shelvesOf(b), shelfNo(b, it)로 읽어요(빈 값·범위 밖 값을 정리해 줘요). 위치 글자는 shelfTxt(b, it) → ' › 2단' (단이 하나면 '')
 
 // loans/{id}
 { id, itemId, itemName, cabId, blockId, qty, who, due, out, outBy, outByName, returnedAt: null|ms, returnedBy, returnedByName }

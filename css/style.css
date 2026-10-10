@@ -338,3 +338,16 @@ button.door.on:hover{background:var(--board)}
   .search{order:3;flex:1 1 100%;max-width:none}
   .brand h1{font-size:24px}
 }
+
+/* ── 칸 안의 단 (1단 = 맨 아래) ── */
+.block .shelves{flex:1;min-height:0;display:grid;grid-template-rows:repeat(var(--sh),minmax(0,1fr));margin:3px -8px -7px}
+.shelf{display:flex;align-items:center;gap:6px;min-height:0;overflow:hidden;padding:0 8px;border-top:2px solid rgba(0,0,0,.26);font-size:11px;line-height:1.2}
+.shelf i{font-style:normal;font:500 10px var(--f-mono);opacity:.75;flex:none}
+.shelf span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.92}
+.block .flags.abs{position:absolute;top:6px;right:6px;margin:0}
+.mini span[data-sh]{background-image:repeating-linear-gradient(to bottom,transparent 0,transparent calc(100% / var(--sh) - 1.5px),rgba(0,0,0,.28) calc(100% / var(--sh) - 1.5px),rgba(0,0,0,.28) calc(100% / var(--sh)))}
+.shelfgrp{display:flex;flex-direction:column;gap:6px}
+.shelfhead{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;padding:4px 2px 0;border-top:2px solid var(--frame);color:var(--muted)}
+.shelfhead b{color:var(--ink);font-weight:700}
+#new-shelf{flex:none;width:auto;padding:6px 8px;font-size:13px}
+.label .lshelf{font-size:11.5px}.label .lshelf b{display:inline;font-size:11px;color:var(--muted);margin-right:3px}

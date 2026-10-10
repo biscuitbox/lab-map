@@ -33,7 +33,13 @@ export function defaultCats() {
     { id: 'c_safe', name: '안전장비', color: '#e86aa8', hazard: '' }
   ];
 }
-export const newItem = name => ({ id: uid(), name, qty: 1, unit: '개', min: '', expiry: '', cat: '', cas: '', msds: '', ghs: [], photoAt: '' });
+export const newItem = (name, shelf = 1) => ({ id: uid(), name, qty: 1, unit: '개', min: '', expiry: '', cat: '', cas: '', msds: '', ghs: [], photoAt: '', shelf });
+/* 블록 안의 단: 1단 = 맨 아래. 단이 하나뿐이면 위치에 '단'을 붙이지 않아요 */
+export const MAX_SHELVES = 4;
+export const shelvesOf = b => Math.max(1, Math.min(MAX_SHELVES, +(b && b.shelves) || 1));
+export const shelfNo = (b, it) => Math.min(shelvesOf(b), Math.max(1, +(it && it.shelf) || 1));
+export const shelfTxt = (b, it) => shelvesOf(b) > 1 ? ` › ${shelfNo(b, it)}단` : '';
+export const shelfName = (n, total) => `${n}단${total > 1 && n === total ? ' (맨 위)' : ''}${total > 1 && n === 1 ? ' (맨 아래)' : ''}`;
 
 /* 공유 상태 (Firestore와 맞춰짐) */
 export const S = {
@@ -49,7 +55,7 @@ export const ui = {
   phase: 'boot', view: 'room', cab: null, block: null, furn: null, q: '', filter: 'all', confirm: null, newCat: 'c_reag',
   U: 30, S: 100, openItem: null, loanItem: '', year: String(new Date().getFullYear()), qrCab: 'all',
   reqErr: '', hashDone: false, deferred: false, cmp: null, autoBackupDone: false, pruned: false, photo: null,
-  room: savedRoom, scope: 'room', addingRoom: false, newRoomKind: 'science', swing: null, migrated: false
+  room: savedRoom, scope: 'room', addingRoom: false, newShelf: 1, newRoomKind: 'science', swing: null, migrated: false
 };
 
 let toastT;
@@ -268,7 +274,7 @@ export function yearUsage(Y) {
   const multi = rooms().length > 1;
   return Object.values(agg).map(a => {
     const { cab, b, it } = locate(a.id); const qty = it ? +it.qty || 0 : 0, min = it && it.min !== '' ? +it.min : 0, rid = cab ? roomOf(cab) : '';
-    const where = cab ? `${multi ? (roomById(rid) || {}).roomName + ' › ' : ''}${cab.name} › ${b.label}` : '삭제된 물품';
+    const where = cab ? `${multi ? (roomById(rid) || {}).roomName + ' › ' : ''}${cab.name} › ${b.label}${shelfTxt(b, it)}` : '삭제된 물품';
     return { ...a, rid, name: it ? it.name : a.name, unit: it ? it.unit : '', where, qty, min, buy: it ? Math.max(0, a.used + min - qty) : 0 };
   }).filter(r => ui.scope === 'all' || r.rid === (curRoom() || {}).id).sort((x, y) => y.used - x.used || y.loans - x.loans);
 }
@@ -286,7 +292,7 @@ export function normalize(d) {
   cabs = cabs.map((c, i) => ({
     id: sid(c.id), roomId: rids.has(c.roomId) ? c.roomId : first, name: c.name || T('cab'), cols: c.cols || 3, rows: c.rows || 3, x: c.x || 0, y: c.y || 0, locked: !!c.locked, order: c.order || i + 1,
     blocks: (c.blocks || []).map(b => ({
-      id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '',
+      id: sid(b.id), c: b.c || 0, r: b.r || 0, w: b.w || 1, h: b.h || 1, label: b.label || '블록', cat: b.cat || '', shelves: shelvesOf(b),
       items: (b.items || []).map(it => clone({ ...newItem(it.name || '물품'), ...it, ghs: it.ghs || [] }))
     }))
   }));
@@ -306,7 +312,7 @@ export function toTrash(type, data, from) {
   const t = { id, type, data: clone(data), from: from || {}, at: Date.now(), by: S.auth.uid, byName: byName() };
   S.trash[id] = t; put('trash/' + id, clone(t)); return id;
 }
-export const blockShape = b => ({ id: b.id, c: b.c, r: b.r, w: b.w, h: b.h, label: b.label, cat: b.cat });
+export const blockShape = b => ({ id: b.id, c: b.c, r: b.r, w: b.w, h: b.h, label: b.label, cat: b.cat, shelves: shelvesOf(b) });
 export function fmtTime(ms) { const d = new Date(ms); return `${ymd(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; }
 export function flatItems(cabs) { const m = {}; cabs.forEach(c => c.blocks.forEach(b => b.items.forEach(it => { m[it.id] = { cab: c, b, it }; }))); return m; }
 export function backupDiff(data) {

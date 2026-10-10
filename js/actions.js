@@ -3,7 +3,7 @@ import { login, logout, setPath, delPath, getPath } from './firebase.js';
 import {
   $, uid, clone, ymd, S, ui, toast, put, saveMeta, saveCab, saveLoan, dbErr, M, cat, cabList, findCab, locate, findBlock,
   snap, clamp, cabFoot, canPlace, conflicts, layoutLocked, newItem, defaultCats, FURN, GHS, allRows, yearUsage,
-  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn,
+  exportData, normalize, myEmail, toTrash, blockShape, flatItems, isManager, T, j, PRESETS, safetyOn, shelvesOf, shelfNo, MAX_SHELVES,
   rooms, roomById, roomOf, setRoom, newRoom, siteTitle
 } from './state.js';
 import { SITE_TITLE } from './config.js';
@@ -109,8 +109,16 @@ const ACT = {
   closeBlk: () => { ui.block = null; render(); },
   blkCat: t => { const { cab, b } = findBlock(ui.block); const old = cat(b.cat).name; b.cat = t.dataset.id; if (b.label === old) b.label = cat(b.cat).name; ui.newCat = b.cat; saveCab(cab.id); render(); },
   blkSize: t => { const { cab, b } = findBlock(ui.block), k = t.dataset.k, d = +t.dataset.d, w = b.w + (k === 'w' ? d : 0), h = b.h + (k === 'h' ? d : 0); if (canPlace(cab, b, b.c, b.r, w, h)) { b.w = w; b.h = h; saveCab(cab.id); render(); } },
+  blkShelves: t => {
+    const { cab, b } = findBlock(ui.block), N = Math.max(1, Math.min(MAX_SHELVES, shelvesOf(b) + +t.dataset.d)); if (N === shelvesOf(b)) return;
+    // 물품의 단 번호는 그대로 두어요. 단을 줄이면 위쪽 물품은 맨 위 단에 함께 보이고, 다시 늘리면 원래 단으로 돌아가요
+    const above = b.items.filter(it => (+it.shelf || 1) > N).length;
+    b.shelves = N; saveCab(cab.id); render();
+    toast(above ? `${N === 1 ? '단 나누기를 없앴어요' : `${N}단으로 줄였어요`}. 위쪽 단 물품 ${above}종은 ${N === 1 ? '한 칸에' : `${N}단(맨 위)에`} 함께 보여요. 다시 늘리면 원래 단으로 돌아가요.`
+      : N === 1 ? '단 나누기를 없앴어요' : `칸 안을 ${N}단으로 나눴어요. 맨 아래가 1단이에요.`);
+  },
   delBlock: t => { if (needConfirm('delBlock:' + t.dataset.id)) return; const { cab, b } = findBlock(t.dataset.id); const tid = toTrash('block', b, { cabId: cab.id, cabName: cab.name }); cab.blocks = cab.blocks.filter(x => x.id !== b.id); ui.block = null; saveCab(cab.id); render(); undoable(`‘${b.label}’ 블록을 휴지통으로 옮겼어요`, tid); },
-  addItem: () => { const inp = $('#new-item'), name = inp.value.trim(); if (!name) { inp.focus(); return; } const { cab, b } = findBlock(ui.block); b.items.push(newItem(name)); saveCab(cab.id); render(); const n = $('#new-item'); if (n) n.focus(); },
+  addItem: () => { const inp = $('#new-item'), name = inp.value.trim(); if (!name) { inp.focus(); return; } const { cab, b } = findBlock(ui.block); const sh = $('#new-shelf'); const shelf = sh ? +sh.value : 1; ui.newShelf = shelf; b.items.push(newItem(name, shelf)); saveCab(cab.id); render(); const n = $('#new-item'); if (n) n.focus(); },
   delItem: t => { const { cab, b, it } = locate(t.dataset.id); const tid = toTrash('item', it, { cabId: cab.id, cabName: cab.name, blockId: b.id, blockLabel: b.label, block: blockShape(b) }); b.items = b.items.filter(i => i.id !== it.id); saveCab(cab.id); render(); undoable(`‘${it.name}’을(를) 휴지통으로 옮겼어요`, tid); },
   qty: t => { const { cab, it } = locate(t.dataset.id); const before = +it.qty || 0, after = Math.max(0, before + +t.dataset.d); if (after === before) return; it.qty = after; saveCab(cab.id); logQty(it, after - before); render(); },
   applyPreset: t => { const p = PRESETS[t.dataset.id]; if (!p) return; M().terms = { ...p.terms }; M().safety = p.safety; M().preset = t.dataset.id; saveMeta(); render(); toast(`${p.label}에 맞게 이름을 바꿨어요. 아래 칸에서 하나씩 고칠 수도 있어요.`); },
@@ -143,8 +151,8 @@ const ACT = {
     w.document.open(); w.document.write(labelsHtml(true)); w.document.close();
   },
   saveLabels: () => download(`${fileBase()} QR 라벨.html`, labelsHtml(false), 'text/html'),
-  csvInventory: () => download(`${fileBase(ui.scope === 'all')} 재고 ${ymd(new Date())}.csv`, csv([['특별실', T('cab'), '블록', '물품', '분류', '수량', '단위', '최소', '유효기한', '대여 중', 'CAS', 'GHS']]
-    .concat(allRows().map(r => [r.room ? r.room.roomName : '', r.cab.name, r.b.label, r.it.name, r.c.name, r.it.qty, r.it.unit, r.it.min, r.it.expiry, r.lq, r.it.cas, (r.it.ghs || []).map(g => GHS[g] ? GHS[g][1] : g).join(' ')]))), 'text/csv'),
+  csvInventory: () => download(`${fileBase(ui.scope === 'all')} 재고 ${ymd(new Date())}.csv`, csv([['특별실', T('cab'), '블록', '단', '물품', '분류', '수량', '단위', '최소', '유효기한', '대여 중', 'CAS', 'GHS']]
+    .concat(allRows().map(r => [r.room ? r.room.roomName : '', r.cab.name, r.b.label, shelvesOf(r.b) > 1 ? shelfNo(r.b, r.it) : '', r.it.name, r.c.name, r.it.qty, r.it.unit, r.it.min, r.it.expiry, r.lq, r.it.cas, (r.it.ghs || []).map(g => GHS[g] ? GHS[g][1] : g).join(' ')]))), 'text/csv'),
   csvBuy: () => download(`${fileBase(ui.scope === 'all')} 구입 추천 ${ui.year}.csv`, csv([['물품', '위치', '지금 수량', '단위', '최소', '연간 사용량', '연간 보충량', '구입 추천']]
     .concat(yearUsage(ui.year).filter(r => r.buy > 0).map(r => [r.name, r.where, r.qty, r.unit, r.min, r.used, r.added, r.buy]))), 'text/csv'),
   catAdd: () => { M().categories.push({ id: 'c_' + uid(), name: '새 분류', color: '#5b8def', hazard: '' }); saveMeta(); render(); },
@@ -235,6 +243,7 @@ const CH = {
   itMin: itemCh((it, t) => it.min = t.value === '' ? '' : Math.max(0, parseInt(t.value) || 0)),
   itExp: itemCh((it, t) => it.expiry = t.value),
   itCat: itemCh((it, t) => it.cat = t.value),
+  itShelf: itemCh((it, t) => it.shelf = Math.max(1, +t.value || 1)),
   itCas: itemCh((it, t) => it.cas = t.value.trim()),
   itMsds: itemCh((it, t) => { const v = t.value.trim(); it.msds = /^https?:\/\//i.test(v) ? v : (v ? 'https://' + v : ''); }),
   catName: t => { M().categories.find(c => c.id === t.dataset.id).name = t.value.trim() || '분류'; saveMeta(); },
