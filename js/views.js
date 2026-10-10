@@ -250,7 +250,7 @@ function renderCab() {
    <button class="btn ghost sm" data-act="copyCab">${COPY_SVG} ${T('cab')} 복사</button>
    ${confirmBtn('cabDel', cab.id, `${T('cab')} 삭제`, '한 번 더 누르면 삭제')}</div>
   ${clipBar('cab')}${elsewhere(q)}
-  <div class="stage"><div class="cabinet"><div class="plate">${esc(cab.name)}</div>
+  <div class="stage"><div class="cabinet"><div class="plate" style="width:${cab.cols * S2}px" title="${esc(cab.name)}">${esc(cab.name)}</div>
    <div class="cab-inner" style="width:${cab.cols * S2}px;height:${cab.rows * S2}px;background-size:100% ${S2}px">`;
   const occ = new Set(); cab.blocks.forEach(b => { for (let r = b.r; r < b.r + b.h; r++) for (let c = b.c; c < b.c + b.w; c++) occ.add(r + ',' + c); });
   for (let r = 0; r < cab.rows; r++) for (let c = 0; c < cab.cols; c++) if (!occ.has(r + ',' + c))

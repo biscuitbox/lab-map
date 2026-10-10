@@ -137,8 +137,10 @@ const ACT = {
   pasteCab: () => {
     if (!ui.clip || ui.clip.type !== 'cab') return;
     const src = ui.clip.data, room = M(), same = src.roomId === room.id;
-    const names = new Set(cabList().map(c => c.name)); let name = same ? `${src.name} 복사본` : src.name, n = 2;
-    while (names.has(name)) name = `${src.name} 복사본 ${n++}`;
+    // 복사본을 또 복사해도 ‘복사본 복사본…’이 이어지지 않게 원래 이름 뒤에 번호만 붙여요
+    const names = new Set(cabList().map(c => c.name)), base = src.name.replace(/(\s*복사본(\s*\d+)?)+$/, '').trim() || src.name;
+    let name = same || base !== src.name ? `${base} 복사본` : src.name, n = 2;
+    while (names.has(name)) name = `${base} 복사본 ${n++}`;
     const cab = { ...clone(src), id: uid(), roomId: room.id, name, group: '', locked: false, order: Date.now(), blocks: cloneBlocks(src.blocks, ui.clipItems) };
     const ft = cabFoot(cab); cab.x = clamp(src.x + (same ? 1 : 0), 0, Math.max(0, room.room.w - ft.w)); cab.y = clamp(src.y + (same ? 1 : 0), 0, Math.max(0, room.room.h - ft.h));
     S.cabs[cab.id] = cab; saveCab(cab.id); ui.cab = cab.id; ui.block = null; render();

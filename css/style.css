@@ -394,3 +394,6 @@ button.door.on:hover{background:var(--board)}
 .furn .rotbtn{position:absolute;right:2px;bottom:2px;background:var(--surface);box-shadow:0 0 0 1px var(--line);color:var(--ink)}
 @media (hover:hover){.rotbtn{opacity:0}.cabcard:hover .rotbtn,.furn:hover .rotbtn,.furn.sel .rotbtn,.rotbtn:focus-visible{opacity:1}}
 .dragging .rotbtn{opacity:0!important}
+
+/* 실험장 이름판: 이름이 길어도 실험장 틀을 넓히지 않고 줄을 바꿔요 */
+.cabinet .plate{box-sizing:border-box;word-break:keep-all;overflow-wrap:anywhere;line-height:1.25}
