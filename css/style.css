@@ -55,15 +55,34 @@ a{color:var(--accent)}
 .av{width:26px;height:26px;border-radius:50%;object-fit:cover;flex:none;background:var(--surface-2)}
 .role{font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
 
-.stats{display:flex;flex-wrap:wrap;gap:8px}
-.stat{display:flex;align-items:baseline;gap:6px;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--line);font-size:13px;color:var(--muted)}
-.stat b{font-family:var(--f-mono);font-weight:500;color:var(--ink);font-size:15px}
-button.stat:hover{border-color:var(--accent)}
-.stat.warn b{color:var(--warn)} .stat.bad b{color:var(--danger)}
+/* 요약 줄: 왼쪽은 읽기만 하는 정보 글자, 오른쪽은 눌러서 목록으로 가는 상태 단추 */
+.stats{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.stat-info{margin:0;display:flex;gap:16px;align-items:baseline;font-size:13.5px;color:var(--muted);padding-right:18px;border-right:1.5px solid var(--line)}
+.stat-info b{font:500 17px var(--f-mono);color:var(--ink);margin-inline:2px}
+.stat-acts{display:flex;flex-wrap:wrap;gap:8px}
+.stat{display:inline-flex;align-items:center;gap:7px;padding:6px 10px 5px 12px;border-radius:8px;font-size:13px;color:var(--ink);
+  background:var(--surface);border:1.5px solid var(--line);border-bottom-width:3px;transition:transform .08s,border-color .15s,background .15s}
+.stat b{font:500 15px var(--f-mono)}
+.stat .chev{color:var(--muted);margin-left:1px}
+.stat:hover{border-color:var(--accent);background:var(--surface)}
+.stat:hover .chev{color:var(--accent)}
+.stat:active{transform:translateY(2px);border-bottom-width:1.5px;margin-bottom:1.5px}
+.stat.warn{background:var(--warn-soft);border-color:var(--warn)} .stat.warn b{color:var(--warn)}
+.stat.bad{background:var(--danger-soft);border-color:var(--danger)} .stat.bad b{color:var(--danger)}
+.stat.zero{color:var(--muted)} .stat.zero b{color:var(--muted)}
+.stat .late{font-size:11.5px;font-weight:700;color:var(--danger)}
+@media (max-width:640px){.stat-info{border-right:0;padding-right:0;width:100%}}
 
-.tabs{display:flex;gap:2px;border-bottom:1.5px solid var(--line);overflow-x:auto}
-.tabs button{border:0;background:none;padding:10px 13px;color:var(--muted);font-weight:500;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;white-space:nowrap}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+/* 메뉴 탭: 파일철 색인처럼 위로 튀어나온 탭. 고른 탭은 명패와 같은 칠판색 */
+.tabs{display:flex;gap:4px;align-items:flex-end;border-bottom:3px solid var(--board);overflow-x:auto;padding-top:6px;margin-top:2px}
+.tabs button{display:inline-flex;align-items:center;gap:7px;flex:none;padding:9px 14px 8px;border:1.5px solid var(--line);border-bottom:0;border-radius:9px 9px 0 0;
+  background:var(--surface-2);color:var(--ink);font-weight:500;white-space:nowrap;transition:transform .12s,background .12s}
+.tabs button svg{color:var(--muted);flex:none}
+.tabs button:hover{background:var(--surface);transform:translateY(-3px)}
+.tabs button:hover svg{color:var(--accent)}
+.tabs button[aria-selected="true"]{background:var(--board);border-color:var(--board);color:var(--chalk);transform:none;padding-bottom:10px}
+.tabs button[aria-selected="true"] svg{color:var(--chalk)}
+@media (prefers-reduced-motion:reduce){.tabs button:hover{transform:none}}
 
 .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
 .hint{color:var(--muted);font-size:13px}

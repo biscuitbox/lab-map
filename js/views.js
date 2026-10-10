@@ -8,6 +8,7 @@ import {
 } from './state.js';
 import { cachedPhoto, hydratePhotos } from './photos.js';
 
+const CHEV = '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="m2 2 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const VIEWS = ['room', 'cab', 'list', 'loans', 'stats', 'qr', 'backup', 'set'];
 
 export function render() {
@@ -26,12 +27,13 @@ export function render() {
     $('#gate').hidden = true;
     const s = stats();
     $('#q').placeholder = rooms().length > 1 ? '물품 찾기 (모든 특별실에서)' : '물품 찾기 (예: 염산, 비커)';
-    $('#tab-cab').textContent = `${T('cab')} 조립`;
-    $('#stats').innerHTML = `<span class="stat">${T('cab')} <b>${cabList().length}</b></span><span class="stat">물품 <b>${s.items}</b>종</span>
-     <button class="stat ${s.low ? 'warn' : ''}" data-act="goFilter" data-f="low">재고 부족 <b>${s.low}</b></button>
-     <button class="stat ${s.date ? 'bad' : ''}" data-act="goFilter" data-f="date">유효기한 임박·만료 <b>${s.date}</b></button>
-     ${safetyOn() ? `<button class="stat ${s.warn ? 'bad' : ''}" data-act="goWarn">보관 경고 <b>${s.warn}</b></button>` : ''}
-     <button class="stat ${s.late ? 'bad' : s.loans ? 'warn' : ''}" data-act="tab" data-view="loans">대여 중 <b>${s.loans}</b>${s.late ? ` · 연체 <b>${s.late}</b>` : ''}</button>`;
+    $('#tab-cab .tl').textContent = `${T('cab')} 조립`;
+    const go = (cls, attrs, label, n, extra = '') => `<button class="stat ${n ? cls : 'zero'}" ${attrs} title="${label} 보러 가기">${label} <b>${n}</b>${extra}${CHEV}</button>`;
+    $('#stats').innerHTML = `<p class="stat-info"><span>${T('cab')} <b>${cabList().length}</b>개</span><span>물품 <b>${s.items}</b>종</span></p>
+     <div class="stat-acts">${go('warn', 'data-act="goFilter" data-f="low"', '재고 부족', s.low)}
+     ${go('bad', 'data-act="goFilter" data-f="date"', '유효기한 임박·만료', s.date)}
+     ${safetyOn() ? go('bad', 'data-act="goWarn"', '보관 경고', s.warn) : ''}
+     ${go(s.late ? 'bad' : 'warn', 'data-act="tab" data-view="loans"', '대여 중', s.loans, s.late ? ` <span class="late">연체 ${s.late}</span>` : '')}</div>`;
     document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.view === ui.view));
     VIEWS.forEach(v => $('#v-' + v).hidden = v !== ui.view);
     ({ room: renderRoom, cab: renderCab, list: renderList, loans: renderLoans, stats: renderStats, qr: renderQr, backup: renderBackup, set: renderSet })[ui.view]();
