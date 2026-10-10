@@ -112,6 +112,25 @@ const ACT = {
     const list = rooms(), i = list.findIndex(r => r.id === t.dataset.id), k = i + +t.dataset.d; if (i < 0 || k < 0 || k >= list.length) return;
     list.forEach((r, n) => { r.order = n + 1; }); list[i].order = k + 1; list[k].order = i + 1; saveMeta(); render();
   },
+  /* 특별실 통째로 복사: 바닥·가구·분류·이름·실험장·블록(물품은 고를 때만). 대여 기록은 복사하지 않아요 */
+  copyRoom: t => {
+    const src = roomById(t.dataset.id); if (!src || !isManager()) return;
+    const names = new Set(rooms().map(r => r.roomName)), base = src.roomName.replace(/(\s*복사본(\s*\d+)?)+$/, '').trim() || src.roomName;
+    let name = `${base} 복사본`, n = 2; while (names.has(name)) name = `${base} 복사본 ${n++}`;
+    const gmap = {}, g = id => id ? (gmap[id] || (gmap[id] = 'g' + uid())) : '';   // 가구·실험장 묶음은 새 묶음으로 같이 이어 줘요
+    const r = { ...clone(src), id: 'r' + uid(), roomName: name, furniture: clone(src.furniture || []).map(f => ({ ...f, id: uid(), group: g(f.group) })) };
+    const list = rooms(), i = list.findIndex(x => x.id === src.id); list.splice(i + 1, 0, r); list.forEach((x, k) => { x.order = k + 1; });
+    S.meta.rooms.push(r);
+    const withItems = !!ui.roomCopyItems, made = cabList(src.id).map(c => ({ ...clone(c), id: uid(), roomId: r.id, group: g(c.group), blocks: cloneBlocks(c.blocks, withItems) }));
+    made.forEach(c => { S.cabs[c.id] = c; saveCab(c.id); });
+    saveMeta(); setRoom(r.id); ui.view = 'room'; ui.cab = null; ui.block = null; render();
+    toast(`${j(`‘${src.roomName}’`, '을/를')} ${j(`‘${name}’`, '으로/로')} 복사했어요${withItems ? ' (물품 포함)' : ''}`, {
+      label: '되돌리기', fn: () => {
+        made.forEach(c => { delete S.cabs[c.id]; saveCab(c.id); });
+        S.meta.rooms = S.meta.rooms.filter(x => x.id !== r.id); saveMeta(); setRoom(src.id); render(); toast('복사를 되돌렸어요');
+      }
+    });
+  },
   delRoom: t => {
     const r = roomById(t.dataset.id); if (!r || !isManager()) return;
     if (rooms().length < 2) { toast('특별실은 하나 이상 있어야 해요'); return; }
@@ -354,6 +373,7 @@ const CH = {
   itExp: itemCh((it, t) => it.expiry = t.value),
   itCat: itemCh((it, t) => it.cat = t.value),
   clipItems: t => { ui.clipItems = t.checked; },
+  roomCopyItems: t => { ui.roomCopyItems = t.checked; },
   // 크기 칸에 숫자를 직접 적으면, 지금 값과의 차이만큼 −/＋ 단추와 같은 규칙으로 바꿔요
   stepSet: t => { const raw = parseFloat(t.value), v = ['furnSize', 'cabFloor'].includes(t.dataset.a) ? Math.round(raw * 2) / 2 : Math.round(raw), cur = +t.dataset.cur; if (!isFinite(v)) { toast('숫자를 적어 주세요'); return; } if (v === cur) return; ACT[t.dataset.a]({ dataset: { k: t.dataset.k, d: String(v - cur) } }); },
   itShelf: itemCh((it, t) => it.shelf = Math.max(1, +t.value || 1)),
