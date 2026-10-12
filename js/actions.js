@@ -517,12 +517,41 @@ function startDrag(e) {
   t.addEventListener('pointermove', mv); t.addEventListener('pointerup', up); t.addEventListener('pointercancel', up);
 }
 
+/* 복도의 특별실 명패를 끌어서 순서 바꾸기 (관리자, 마우스·펜). 끄는 동안 다른 명패가 옆으로 비켜 줘요 */
+function startRoomDrag(e) {
+  const t = e.target.closest('.rail .door[data-act=pickRoom]');
+  if (!t || e.button > 0 || e.pointerType === 'touch' || !isManager()) return;
+  const rail = t.parentElement, doors = [...rail.querySelectorAll('.door[data-act=pickRoom]')], src = doors.indexOf(t);
+  if (doors.length < 2 || src < 0) return;
+  const rects = doors.map(d => d.getBoundingClientRect()), gap = doors.length > 1 ? rects[1].left - rects[0].right : 16, shift = rects[src].width + gap;
+  const sx = e.clientX; let on = false, to = src;
+  const mv = ev => {
+    const dx = clamp(ev.clientX - sx, rects[0].left - rects[src].left, rects[rects.length - 1].right - rects[src].right);
+    if (!on) { if (Math.abs(ev.clientX - sx) < 6) return; on = true; t.classList.add('dragging-door'); rail.classList.add('sorting'); }
+    t.style.transform = `translateX(${dx}px)`;
+    const cx = rects[src].left + rects[src].width / 2 + (ev.clientX - sx);   // 자리는 손 위치로, 보이는 명패는 줄 안에서만
+    to = rects.reduce((n, r, i) => i !== src && cx > r.left + r.width / 2 ? n + 1 : n, 0);
+    doors.forEach((d, i) => { if (i === src) return; d.style.transform = i > src && i <= to ? `translateX(${-shift}px)` : i < src && i >= to ? `translateX(${shift}px)` : ''; });
+  };
+  const up = () => {
+    document.removeEventListener('pointermove', mv); document.removeEventListener('pointerup', up); document.removeEventListener('pointercancel', up);
+    if (!on) return;
+    ui.eatClick = Date.now() + 400;
+    doors.forEach(d => { d.style.transform = ''; d.classList.remove('dragging-door'); }); rail.classList.remove('sorting');
+    if (to === src) return;
+    const list = rooms(), [moved] = list.splice(src, 1); list.splice(to, 0, moved); list.forEach((r, i) => { r.order = i + 1; });
+    saveMeta(); render(); toast(`${j(`‘${moved.roomName}’`, '을/를')} ${to + 1}번째로 옮겼어요`);
+  };
+  document.addEventListener('pointermove', mv); document.addEventListener('pointerup', up); document.addEventListener('pointercancel', up);
+}
+
 export function installHandlers() {
   // 사람이 누르거나 입력한 그 순간의 저장만 되돌리기 단계로 남겨요
   ['pointerdown', 'pointerup', 'click', 'keydown', 'change', 'input'].forEach(ev => document.addEventListener(ev, armUndo, true));
   // 배치도: 마우스를 올린 보관장·가구를 기억해 두면 Ctrl+C·Delete가 그것을 대상으로 해요
   document.addEventListener('pointerover', e => { const el = e.target.closest && e.target.closest('[data-drag=cab],[data-drag=furn]'); ui.hover = el ? (el.dataset.drag === 'cab' ? 'c:' : 'f:') + el.dataset.id : null; });
   document.addEventListener('click', e => {
+    if (ui.eatClick > Date.now()) { e.preventDefault(); e.stopPropagation(); return; }   // 명패를 끌어 놓은 뒤 따라오는 클릭은 무시
     // 배치도의 빈 바닥을 누르면 고른 것을 풀어요
     if (e.target.classList && e.target.classList.contains('floor')) { ui.lastTap = null; if (ui.fcab || ui.furn) { ui.fcab = null; ui.furn = null; render(); } return; }
     const t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
@@ -581,6 +610,7 @@ export function installHandlers() {
   });
   $('#q').addEventListener('input', e => { ui.q = e.target.value; if (['set', 'qr', 'stats', 'backup'].includes(ui.view)) ui.view = 'room'; render(); });
   document.addEventListener('pointerdown', startDrag);
+  document.addEventListener('pointerdown', startRoomDrag);
   $('#lightbox').addEventListener('click', e => { if (e.target.id === 'lightbox') { ui.photo = null; render(); } });
   let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { if (ui.phase === 'ready' && (ui.view === 'room' || ui.view === 'cab')) render(); }, 150); });
 }

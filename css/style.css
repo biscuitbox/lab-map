@@ -423,3 +423,7 @@ button.door.on:hover{background:var(--board)}
 .pickstep button:hover{background:var(--accent-soft)}
 .pickstep select{border:0;border-inline:1.5px solid var(--line);border-radius:0;background:var(--surface);font-weight:600;font-size:14px;padding:6px 8px;width:min(320px,52vw);min-width:0}
 .picker .linkbtn{font-size:12.5px}
+/* 특별실 명패 끌어서 순서 바꾸기 */
+.rail.sorting .door{transition:transform .18s ease}
+.rail .door.dragging-door{transition:none;z-index:5;cursor:grabbing;box-shadow:0 8px 18px rgba(0,0,0,.25)}
+@media (hover:hover){.rail .door[data-act=pickRoom]{cursor:pointer}}
