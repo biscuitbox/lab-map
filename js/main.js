@@ -1,6 +1,6 @@
 // 시작: 구글 로그인 → 승인 확인 → Firestore 실시간 구독
 import { configured, watchAuth, redirectResult, getPath, setPath, watchDoc, watchCol } from './firebase.js';
-import { $, S, ui, clone, pending, dbErr, isCfgAdmin, isManager, findBlock, myEmail, migrateMeta, setRoom, roomOf, rooms, saveMeta, saveCab, toast } from './state.js';
+import { $, S, ui, clone, pending, dbErr, isCfgAdmin, isManager, findBlock, myEmail, migrateMeta, setRoom, roomOf, rooms, saveMeta, saveCab, toast, remember, forgetHistory } from './state.js';
 import { render } from './views.js';
 import { OPEN_TO_ALL_GOOGLE } from './config.js';
 import { installHandlers } from './actions.js';
@@ -36,7 +36,8 @@ window.addEventListener('hashchange', () => { ui.hashDone = false; applyHash(); 
 /* 보내는 중인 내 변경은 지키고 나머지는 서버 내용으로 맞춤 */
 function mergeColl(prefix, store, list) {
   const next = {}; list.forEach(d => { next[d.id] = clone(d.data); });
-  new Set([...Object.keys(next), ...Object.keys(store)]).forEach(id => { if (pending(prefix + id)) { if (store[id]) next[id] = store[id]; else delete next[id]; } });
+  // 서버에서 온 내용은 되돌리기 기준으로 기억만 해요(다른 사람이 바꾼 것은 내 되돌리기 단계가 아니에요)
+  new Set([...Object.keys(next), ...Object.keys(store)]).forEach(id => { if (pending(prefix + id)) { if (store[id]) next[id] = store[id]; else delete next[id]; } else remember(prefix + id, next[id] || null); });
   return next;
 }
 
@@ -57,7 +58,7 @@ function startData() {
   stop(dataSubs);
   subsAsManager = isManager();
   dataSubs.push(watchDoc('meta/main', d => {
-    if (!pending('meta/main')) { legacy = !!d && !Array.isArray(d.rooms); S.meta = d ? migrateMeta(clone(d)) : null; }
+    if (!pending('meta/main')) { legacy = !!d && !Array.isArray(d.rooms); S.meta = d ? migrateMeta(clone(d)) : null; remember('meta/main', S.meta); }
     S.metaLoaded = true; applyHash(); soft(); maybeMigrate(); maybeAutoBackup();
   }, dbErr));
   dataSubs.push(watchCol('cabinets', (l, fromCache) => { S.cabs = mergeColl('cabinets/', S.cabs, l); if (!fromCache) S.cabsLoaded = true; applyHash(); soft(); maybeMigrate(); maybeAutoBackup(); }, dbErr));
@@ -91,6 +92,7 @@ function evalAccess() {
 async function onUser(u) {
   stop(dataSubs); if (memberUnsub) { memberUnsub(); memberUnsub = null; } if (reqUnsub) { reqUnsub(); reqUnsub = null; }
   Object.assign(S, { auth: u, member: null, meta: null, metaLoaded: false, cabs: {}, members: {}, invites: {}, requests: [], loans: {}, logs: {}, myReq: null, trash: {}, bidx: {}, cabsLoaded: false, idxLoaded: false });
+  forgetHistory();
   Object.assign(ui, { hashDone: false, autoBackupDone: false, pruned: false, cmp: null, migrated: false });
   if (!u) { ui.phase = 'signin'; render(); return; }
   ui.phase = 'checking'; render();

@@ -397,3 +397,5 @@ button.door.on:hover{background:var(--board)}
 
 /* 실험장 이름판: 이름이 길어도 실험장 틀을 넓히지 않고 줄을 바꿔요 */
 .cabinet .plate{box-sizing:border-box;word-break:keep-all;overflow-wrap:anywhere;line-height:1.25}
+/* 키보드 단축키 안내는 마우스가 있는 화면에서만 */
+@media (hover:none){.hint.kbd{display:none}}

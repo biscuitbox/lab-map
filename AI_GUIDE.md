@@ -225,3 +225,15 @@ ID는 `uid()`로 만든 영문·숫자 10자. QR 주소는 `사이트주소#b-{b
 - [ ] 지우는 동작이 휴지통을 거치나
 - [ ] 밝은·어두운 화면, 휴대폰 폭에서 깨지지 않나
 - [ ] `help.html` 사용설명서에도 바뀐 기능을 반영했나
+
+---
+
+## 되돌리기(Ctrl+Z)·키보드
+
+- 모든 저장은 `put(path, data)`를 지나요. `meta/main`, `cabinets/`, `trash/`, `loans/` 경로는 `put`이 저장 전 내용(`remember`로 기억해 둔 서버 기준 내용)과 비교해 바뀐 문서를 **한 단계**로 묶어 `hist.undo`에 쌓아요(최대 50).
+- 단계는 사람의 조작 순간에만 기록돼요: `installHandlers`가 pointerdown·pointerup·click·keydown·change·input을 capture 단계에서 받아 `armUndo()`. 비동기 저장(사진, 자동 백업, 이전)은 단계가 아니에요.
+- 서버에서 온 내용은 `main.js`의 `mergeColl`과 meta 구독에서 `remember()`만 해요(다른 사람의 변경은 내 단계가 아님).
+- `undo(step?)` / `redo()`는 문서를 통째로 이전·이후 내용으로 되돌리고 저장해요. 토스트의 ‘되돌리기’는 `undoBtn(openStep())`로 그 단계만 되돌려요.
+- 새 조작을 만들 때 따로 할 일은 없어요. 평소처럼 `saveMeta()`/`saveCab()`을 부르면 자동으로 되돌리기가 돼요.
+- 키: 배치도는 마우스를 올린 것(`ui.hover`) 또는 고른 것(`ui.fsel`)에 Ctrl+C·Ctrl+V·Delete(`floorTargets`, `copyFloor`, `ACT.pasteCab`, `ACT.delFloor`), 조립 화면은 고른 블록에 Delete(`ACT.delBlocksKey`). 클립보드 `ui.clip`은 `{type:'blocks', data}` 또는 `{type:'floor', roomId, cabs, furn}`.
+

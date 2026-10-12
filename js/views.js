@@ -27,11 +27,12 @@ const PASTE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" a
 function clipBar(where) {
   const c = ui.clip; if (!c) return '';
   if (c.type === 'blocks' && where !== 'cab') return '';
-  const what = c.type === 'cab' ? `${esc(c.data.name)} (${T('cab')}, 블록 ${c.data.blocks.length}개)` : `블록 ${c.data.length}개 (${esc(c.data.map(b => b.label).join(', '))})`;
-  const items = c.type === 'cab' ? c.data.blocks.reduce((a, b) => a + b.items.length, 0) : c.data.reduce((a, b) => a + b.items.length, 0);
+  const fl = c.type === 'floor', cnt = list => list.reduce((a, b) => a + b.items.length, 0);
+  const what = fl ? `${esc([...c.cabs.map(x => x.name), ...c.furn.map(x => x.label)].join(', '))} (${[c.cabs.length ? `${T('cab')} ${c.cabs.length}개` : '', c.furn.length ? `가구 ${c.furn.length}개` : ''].filter(Boolean).join(', ')})` : `블록 ${c.data.length}개 (${esc(c.data.map(b => b.label).join(', '))})`;
+  const items = fl ? c.cabs.reduce((a, x) => a + cnt(x.blocks), 0) : cnt(c.data);
   return `<div class="toolbar clipbar">${COPY_SVG}<span>복사해 둔 것: <b>${what}</b></span>
     ${items ? `<label class="minl" style="color:var(--ink);font-size:12.5px"><input id="clip-items" type="checkbox" data-ch="clipItems" ${ui.clipItems ? 'checked' : ''}> 물품 ${items}종도 함께 (수량 포함)</label>` : ''}
-    ${c.type === 'cab' ? `<button class="btn sm" data-act="pasteCab">${PASTE_SVG} ${esc(M().roomName)}에 붙여넣기</button>` : `<span class="hint">점선 칸을 누르면 그 자리에 붙여요.</span><button class="btn sm" data-act="pasteBlocksAuto">빈 곳에 붙여넣기</button>`}
+    ${fl ? `<button class="btn sm" data-act="pasteCab">${PASTE_SVG} ${esc(M().roomName)}에 붙여넣기</button>` : `<span class="hint">점선 칸을 누르면 그 자리에 붙여요.</span><button class="btn sm" data-act="pasteBlocksAuto">빈 곳에 붙여넣기</button>`}
     <button class="btn ghost sm" data-act="clipClear">그만두기</button></div>`;
 }
 const CHEV = '<svg class="chev" width="8" height="12" viewBox="0 0 8 12" fill="none" aria-hidden="true"><path d="m2 2 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
@@ -166,7 +167,7 @@ function renderRoom() {
     <button class="btn ghost" data-act="addFurn" data-type="sink">＋ ${T('sink')}</button>
     <button class="btn ghost" data-act="fmultiToggle" aria-pressed="${ui.fmulti}">${SEL_SVG} ${ui.fmulti ? '고르는 중' : '여러 개 고르기'}</button>
     <button class="btn ghost" data-act="toggleLayoutLock" aria-pressed="${L}">${LOCK_SVG} ${L ? '배치 잠금 켜짐' : '배치 전체 잠그기'}</button>
-    <span class="hint">${ui.fmulti ? `함께 옮길 ${j(T('cab'), '과/와')} 가구를 차례로 누르세요.` : `${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 누르면 조립 화면이 열려요.`}</span></div>`;
+    <span class="hint">${ui.fmulti ? `함께 옮길 ${j(T('cab'), '과/와')} 가구를 차례로 누르세요.` : `${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 누르면 조립 화면이 열려요.`}</span><span class="hint kbd">마우스를 올리고 Ctrl+C·V 복사, Delete 지우기, Ctrl+Z 되돌리기</span></div>`;
   const items = floorItems(); ui.fsel = ui.fsel.filter(k => items.some(x => x.k === k));
   if (ui.fmulti || ui.fsel.length) {
     const picked = items.filter(x => ui.fsel.includes(x.k)), g0 = picked[0] && picked[0].o.group;

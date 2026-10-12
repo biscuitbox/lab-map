@@ -69,9 +69,47 @@ export function toast(m, action) {
   toastT = setTimeout(() => t.hidden = true, action ? 8000 : 2800);
 }
 
+/* 되돌리기(Ctrl+Z)·다시 하기(Ctrl+Y) 기록
+   저장 경로마다 '마지막으로 알던 내용'을 기억해 두고, 사람이 누르거나 입력한 그 순간에 일어난 저장들을 한 단계로 묶어요.
+   다른 사람이 바꾼 내용은 기억만 새로 하고 단계로 남기지 않아요. 사용 기록(logs)과 사진은 되돌리지 않아요. */
+const TRACK = /^(meta\/main|cabinets\/|trash\/|loans\/)/, MAX_UNDO = 50;
+const known = {};
+const stable = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, key) => (o[key] = x[key], o), {}) : x);
+export const hist = { undo: [], redo: [], step: null, armed: false, replaying: false };
+export function remember(path, data) { if (TRACK.test(path)) known[path] = data == null ? 'null' : stable(data); }
+export function forgetHistory() { hist.undo = []; hist.redo = []; hist.step = null; }
+/* 사람의 조작(누르기·입력·키) 바로 그 순간에만 기록해요 */
+export function armUndo() { if (hist.armed) return; hist.armed = true; setTimeout(() => { hist.armed = false; }, 0); }
+function record(path, data) {
+  const after = data == null ? 'null' : stable(data), before = path in known ? known[path] : 'null';
+  if (before === after) return;
+  if (!hist.step) { const st = hist.step = new Map(); setTimeout(() => { hist.step = null; if (!st.size) return; hist.undo.push(st); if (hist.undo.length > MAX_UNDO) hist.undo.shift(); hist.redo = []; }, 0); }
+  const ch = hist.step.get(path); if (ch) ch.after = after; else hist.step.set(path, { before, after });
+}
+/* 지금 묶이고 있는 단계 (토스트의 ‘되돌리기’가 바로 그 단계만 되돌리도록) */
+export const openStep = () => hist.step;
+function setLocal(path, v) {
+  if (path === 'meta/main') { if (v) S.meta = migrateMeta(v); return; }
+  const i = path.indexOf('/'), col = path.slice(0, i), id = path.slice(i + 1), store = { cabinets: S.cabs, trash: S.trash, loans: S.loans }[col];
+  if (!store) return; if (v) store[id] = v; else delete store[id];
+}
+function replay(step, dir) {
+  hist.replaying = true;
+  try { step.forEach((ch, path) => { const v = JSON.parse(ch[dir]); setLocal(path, v); put(path, v ? clone(v) : null); }); }
+  finally { hist.replaying = false; }
+  // 바뀐 보관장이 다른 특별실에 있으면 그 특별실로 가서 보여 줘요
+  for (const path of step.keys()) if (path.startsWith('cabinets/')) { const c = S.cabs[path.slice(9)] || JSON.parse(step.get(path).before === 'null' ? step.get(path).after : step.get(path).before); if (c && c.roomId && rooms().some(r => r.id === c.roomId)) { setRoom(c.roomId); break; } }
+}
+export function undo(step) {
+  const s = hist.undo[hist.undo.length - 1]; if (!s || (step && s !== step)) return false;
+  hist.undo.pop(); replay(s, 'before'); hist.redo.push(s); return true;
+}
+export function redo() { const s = hist.redo.pop(); if (!s) return false; replay(s, 'after'); hist.undo.push(s); return true; }
+
 /* 저장 대기열: 문서마다 한 번에 하나씩, 가장 최근 상태만 저장 */
 const wq = {};
 export function put(path, data) {
+  if (TRACK.test(path)) { if (hist.armed && !hist.replaying) record(path, data); remember(path, data); }
   const q = wq[path] || (wq[path] = { busy: false, dirty: false, data: null });
   q.data = data; q.dirty = true;
   if (!q.busy) flush(path, q);
