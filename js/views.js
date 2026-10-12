@@ -167,7 +167,7 @@ function renderRoom() {
     <button class="btn ghost" data-act="addFurn" data-type="sink">＋ ${T('sink')}</button>
     <button class="btn ghost" data-act="fmultiToggle" aria-pressed="${ui.fmulti}">${SEL_SVG} ${ui.fmulti ? '고르는 중' : '여러 개 고르기'}</button>
     <button class="btn ghost" data-act="toggleLayoutLock" aria-pressed="${L}">${LOCK_SVG} ${L ? '배치 잠금 켜짐' : '배치 전체 잠그기'}</button>
-    <span class="hint">${ui.fmulti ? `함께 옮길 ${j(T('cab'), '과/와')} 가구를 차례로 누르세요.` : `${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 누르면 조립 화면이 열려요.`}</span><span class="hint kbd">마우스를 올리고 Ctrl+C·V 복사, Delete 지우기, Ctrl+Z 되돌리기</span></div>`;
+    <span class="hint">${ui.fmulti ? `함께 옮길 ${j(T('cab'), '과/와')} 가구를 차례로 누르세요.` : `${L ? '잠금 중에는 옮길 수 없어요. ' : '끌어서 옮기고, '}${j(T('cab'), '을/를')} 한 번 누르면 고르고, 두 번 누르면 조립 화면이 열려요.`}</span></div>`;
   const items = floorItems(); ui.fsel = ui.fsel.filter(k => items.some(x => x.k === k));
   if (ui.fmulti || ui.fsel.length) {
     const picked = items.filter(x => ui.fsel.includes(x.k)), g0 = picked[0] && picked[0].o.group;
@@ -186,7 +186,7 @@ function renderRoom() {
   const f = selF;
   const rotBtn = (k, name) => `<button class="rotbtn" data-act="rotFloor" data-k="${k}" title="시계 방향 90° 돌리기" aria-label="${esc(name)} 90도 돌리기">${ROT_SVG}</button>`;
   if (f) {
-    h += `<div class="toolbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
+    h += `<div class="toolbar selbar"><input id="furn-label" class="field" style="padding:6px 8px;font-size:13px" data-ch="furnLabel" value="${esc(f.label)}" aria-label="이름">
     <span class="stepper"><span>가로</span><button data-act="furnSize" data-k="w" data-d="-0.5" aria-label="가로 줄이기">−</button><input class="stepnum" id="furn-w" type="number" inputmode="decimal" min="1" max="${R.w}" step="0.5" value="${f.w}" data-ch="stepSet" data-a="furnSize" data-k="w" data-cur="${f.w}" aria-label="가로 (숫자 입력)"><button data-act="furnSize" data-k="w" data-d="0.5" aria-label="가로 늘이기">＋</button></span>
     <span class="stepper"><span>세로</span><button data-act="furnSize" data-k="h" data-d="-0.5" aria-label="세로 줄이기">−</button><input class="stepnum" id="furn-h" type="number" inputmode="decimal" min="1" max="${R.h}" step="0.5" value="${f.h}" data-ch="stepSet" data-a="furnSize" data-k="h" data-cur="${f.h}" aria-label="세로 (숫자 입력)"><button data-act="furnSize" data-k="h" data-d="0.5" aria-label="세로 늘이기">＋</button></span>
     <button class="btn ghost sm" data-act="rotFloor" data-k="f:${f.id}">${ROT_SVG} 90° 돌리기</button>
@@ -194,6 +194,17 @@ function renderRoom() {
     ${floorGrouped(f) ? `<span class="grprow sm">${LINK_SVG}<span><b>묶음 ${floorGroupNo(f.group)}</b> · ${floorGroup(f.group).length}개가 함께 움직여요</span><button class="btn ghost sm" data-act="ungroupFloor" data-id="${f.group}">묶음 풀기</button></span>` : ''}
     <button class="btn danger sm" data-act="furnDel">삭제</button><button class="btn ghost sm" data-act="furnClose">닫기</button></div>`;
   }
+  const fc = !f && findCab(ui.fcab);
+  if (fc && roomOf(fc) === curRoom().id) {
+    const items = fc.blocks.reduce((a, b) => a + b.items.length, 0), lk = L || fc.locked;
+    h += `<div class="toolbar selbar"><b class="selname">${esc(fc.name)}</b><span class="muted">블록 ${fc.blocks.length}개 · 물품 ${items}종</span>
+    <button class="btn sm" data-act="fcabOpen">${T('cab')} 조립 열기</button>
+    <button class="btn ghost sm" data-act="rotFloor" data-k="c:${fc.id}" ${lk ? 'disabled' : ''}>${ROT_SVG} 90° 돌리기</button>
+    <button class="btn ghost sm" data-act="fcabCopy">${COPY_SVG} 복사</button>
+    <button class="btn ghost sm" data-act="fcabLock" aria-pressed="${!!fc.locked}">${LOCK_SVG} ${fc.locked ? '잠김' : '위치 잠그기'}</button>
+    <button class="btn danger sm" data-act="delFloor" ${lk ? 'disabled title="잠겨 있어 지울 수 없어요"' : ''}>삭제</button><button class="btn ghost sm" data-act="fcabClose">닫기</button>
+    <span class="hint">두 번 누르거나 Enter를 누르면 조립 화면이 열려요.</span></div>`;
+  } else if (!f) h += `<div class="toolbar selbar idle"><span class="hint kbd">한 번 눌러 고르거나 마우스를 올리고 Ctrl+C·V 복사, Delete 지우기, Ctrl+Z 되돌리기</span></div>`;
   h += elsewhere(q);
   h += `<div class="floor-scroll"><div class="floor" style="width:${R.w * U}px;height:${R.h * U}px;--u:${U}px">`;
   M().furniture.forEach(f => {
@@ -206,7 +217,7 @@ function renderRoom() {
     const rot = rotOf(cab), side = rot % 180 !== 0, iw = ft.w * U - (side ? 29 : 8), ih = ft.h * U - (side ? 8 : 29);
     const place = b => { const u = b.c / cab.cols, v = b.r / cab.rows, uw = b.w / cab.cols, vh = b.h / cab.rows;
       return rot === 90 ? [1 - v - vh, u, vh, uw] : rot === 180 ? [1 - u - uw, 1 - v - vh, uw, vh] : rot === 270 ? [v, 1 - u - uw, vh, uw] : [u, v, uw, vh]; };
-    h += `<div class="cabcard ${rot ? 'rot' + rot : ''} ${fcls('c:' + cab.id, cab)} ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
+    h += `<div class="cabcard ${rot ? 'rot' + rot : ''} ${ui.fcab === cab.id ? 'sel' : ''} ${fcls('c:' + cab.id, cab)} ${q && !m ? 'dim' : ''} ${m ? 'hit' : ''} ${lk ? 'locked' : ''}" data-drag="cab" data-id="${cab.id}" style="left:${cab.x * U}px;top:${cab.y * U}px;width:${ft.w * U}px;height:${ft.h * U}px">
       <div class="cabname">${cab.locked ? LOCK_SVG : ''}<span>${esc(cab.name)}</span>${gtag(cab)}${m ? `<b class="hitn">${m}</b>` : ''}${w ? '<i class="warnmark" title="보관 경고">!</i>' : ''}${lk ? '' : rotBtn('c:' + cab.id, cab.name)}</div>
       <div class="mini">${cab.blocks.map(b => {
         const c = cat(b.cat), [px, py, pw, ph] = place(b), bw = pw * iw, bh = ph * ih;

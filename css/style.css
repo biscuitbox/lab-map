@@ -399,3 +399,10 @@ button.door.on:hover{background:var(--board)}
 .cabinet .plate{box-sizing:border-box;word-break:keep-all;overflow-wrap:anywhere;line-height:1.25}
 /* 키보드 단축키 안내는 마우스가 있는 화면에서만 */
 @media (hover:none){.hint.kbd{display:none}}
+/* 배치도에서 한 번 눌러 고른 실험장 */
+.cabcard.sel{outline:3px solid var(--accent);outline-offset:2px;z-index:2}
+.cabcard.sel .rotbtn{opacity:1}
+.selbar .selname{font-weight:700}
+/* 고른 것 막대는 늘 같은 높이를 차지해서, 고를 때 배치도가 아래로 밀리지 않아요(두 번 누르기가 빗나가지 않게) */
+.selbar{min-height:38px;align-items:center}
+@media (hover:none){.selbar.idle{display:none}}

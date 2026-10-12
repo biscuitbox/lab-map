@@ -166,7 +166,7 @@ export function curRoom() {
   return r;
 }
 export function setRoom(id) {
-  if (ui.room !== id) { ui.swing = id; ui.cab = ui.block = ui.furn = null; ui.qrCab = 'all'; ui.multi = false; ui.sel = []; ui.fmulti = false; ui.fsel = []; }
+  if (ui.room !== id) { ui.swing = id; ui.cab = ui.block = ui.furn = ui.fcab = null; ui.qrCab = 'all'; ui.multi = false; ui.sel = []; ui.fmulti = false; ui.fsel = []; }
   ui.room = id; try { localStorage.setItem(ROOM_KEY, id); } catch (e) { }
   const r = curRoom(); if (r && !r.categories.some(c => c.id === ui.newCat)) ui.newCat = (r.categories[0] || {}).id || '';
 }

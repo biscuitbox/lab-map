@@ -36,7 +36,7 @@ function replaceAll({ meta, cabs }) {
   Object.keys(S.cabs).forEach(id => { if (!cabs.find(c => c.id === id)) { delete S.cabs[id]; saveCab(id); } });
   cabs.forEach(c => { S.cabs[c.id] = c; saveCab(c.id); });
   S.meta = meta; saveMeta();
-  ui.cab = ui.block = ui.furn = null; setRoom(meta.rooms.some(r => r.id === ui.room) ? ui.room : meta.rooms[0].id); render();
+  ui.cab = ui.block = ui.furn = ui.fcab = null; setRoom(meta.rooms.some(r => r.id === ui.room) ? ui.room : meta.rooms[0].id); render();
 }
 function addCab() {
   const n = cabList().length + 1, cab = { id: uid(), roomId: M().id, name: `${T('cab')} ${String.fromCharCode(64 + Math.min(n, 26))}`, cols: 3, rows: 3, x: .5, y: .5, locked: false, order: Date.now(), blocks: [] };
@@ -86,12 +86,12 @@ function pasteBlocks(cab, c, r) {
 function undoable(msg, tid) { toast(msg, { label: '되돌리기', fn: () => { const r = restoreTrash(tid); render(); toast(r.msg); } }); }
 /* 방금 한 일만 되돌리는 토스트 단추 (그 사이 다른 걸 바꿨으면 Ctrl+Z로 차례로) */
 const undoBtn = st => ({ label: '되돌리기', fn: () => { if (st && undo(st)) { render(); toast('되돌렸어요'); } else toast('그 뒤에 바뀐 것이 있어요. Ctrl+Z로 차례로 되돌려 주세요.'); } });
-/* 배치도에서 키보드로 다룰 대상: 고른 것들 → 마우스를 올린 것 → 누른 가구 */
+/* 배치도에서 키보드로 다룰 대상: 여러 개 고른 것 → 한 번 눌러 고른 보관장·가구 → 마우스를 올린 것 */
 function floorTargets() {
   const items = floorItems();
   if (ui.fsel.length) return items.filter(x => ui.fsel.includes(x.k));
-  const h = ui.hover && items.find(x => x.k === ui.hover); if (h) return [h];
-  const f = ui.furn && items.find(x => x.k === 'f:' + ui.furn); return f ? [f] : [];
+  const pick = (ui.fcab && items.find(x => x.k === 'c:' + ui.fcab)) || (ui.furn && items.find(x => x.k === 'f:' + ui.furn)) || (ui.hover && items.find(x => x.k === ui.hover));
+  return pick ? [pick] : [];
 }
 /* 복사해 두기: 배치도의 보관장·가구 (여러 개 가능) */
 function copyFloor(list) {
@@ -100,6 +100,7 @@ function copyFloor(list) {
   const what = list.length === 1 ? `‘${list[0].cab ? list[0].o.name : list[0].o.label}’` : `${list.length}개`;
   toast(`${j(what, '을/를')} 복사했어요. Ctrl+V 또는 ‘붙여넣기’로 붙이고, 다른 특별실에도 붙일 수 있어요.`);
 }
+function openCab(id) { ui.view = 'cab'; ui.cab = id; ui.block = null; ui.fcab = null; ui.lastTap = null; render(); }
 function needConfirm(k) { if (ui.confirm === k) { ui.confirm = null; return false; } ui.confirm = k; render(); return true; }
 const profileOf = () => ({ email: myEmail(), name: S.auth.displayName || '', photo: S.auth.photoURL || '' });
 const validEmail = v => /^[^\s@/]+@[^\s@/]+\.[^\s@/]+$/.test(v);
@@ -204,7 +205,7 @@ const ACT = {
     if (!ok.length) { toast('잠겨 있어서 지우지 않았어요. 잠금을 풀고 다시 해 주세요.'); return; }
     ok.filter(x => x.cab).forEach(x => { toTrash('cabinet', x.o, { cabId: x.o.id, cabName: x.o.name }); delete S.cabs[x.o.id]; saveCab(x.o.id); });
     const fids = new Set(ok.filter(x => !x.cab).map(x => x.o.id)); if (fids.size) { M().furniture = M().furniture.filter(f => !fids.has(f.id)); saveMeta(); }
-    const st = openStep(); ui.fsel = []; ui.furn = null; ui.hover = null; render();
+    const st = openStep(); ui.fsel = []; ui.furn = null; ui.fcab = null; ui.hover = null; render();
     const what = ok.length === 1 ? `‘${ok[0].cab ? ok[0].o.name : ok[0].o.label}’` : `${ok.length}개`;
     toast(`${j(what, '을/를')} 지웠어요${skip ? ` (잠긴 ${skip}개는 그대로)` : ''}. Ctrl+Z로 되돌릴 수 있어요.`, undoBtn(st));
   },
@@ -228,10 +229,15 @@ const ACT = {
   furnLock: () => { const f = M().furniture.find(x => x.id === ui.furn); if (!f) return; f.locked = !f.locked; saveMeta(); render(); },
   furnDel: () => { M().furniture = M().furniture.filter(f => f.id !== ui.furn); ui.furn = null; saveMeta(); render(); },
   furnClose: () => { ui.furn = null; render(); },
+  /* 배치도에서 고른 보관장 */
+  fcabOpen: () => { if (findCab(ui.fcab)) openCab(ui.fcab); },
+  fcabCopy: () => { const c = findCab(ui.fcab); if (c) copyFloor([{ k: 'c:' + c.id, o: c, cab: true }]); },
+  fcabLock: () => { const c = findCab(ui.fcab); if (!c) return; c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `‘${c.name}’ 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
+  fcabClose: () => { ui.fcab = null; render(); },
   toggleLayoutLock: () => { M().layoutLocked = !M().layoutLocked; saveMeta(); render(); toast(M().layoutLocked ? `배치를 잠갔어요. ${j(T('cab'), '과/와')} 가구를 옮길 수 없어요.` : '배치 잠금을 풀었어요'); },
   cabLock: () => { const c = findCab(ui.cab); c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `배치도에서 이 ${T('cab')} 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
   pickCab: t => { ui.cab = t.dataset.id; ui.block = null; ui.multi = false; ui.sel = []; render(); },
-  fmultiToggle: () => { ui.fmulti = !ui.fmulti; ui.fsel = ui.fmulti && ui.furn ? ['f:' + ui.furn] : []; ui.furn = null; render(); },
+  fmultiToggle: () => { ui.fmulti = !ui.fmulti; ui.fsel = ui.fmulti && (ui.furn || ui.fcab) ? [ui.furn ? 'f:' + ui.furn : 'c:' + ui.fcab] : []; ui.furn = null; ui.fcab = null; render(); },
   fmultiDone: () => { ui.fmulti = false; ui.fsel = []; render(); },
   groupFloor: () => {
     const picked = floorItems().filter(x => ui.fsel.includes(x.k)); if (picked.length < 2) return;
@@ -491,10 +497,16 @@ function startDrag(e) {
         if (dx || dy) { saveFloor(set); if (set.length > 1) toast(`${set.length}개를 함께 옮겼어요`); }
         render();
       } else if (ui.fmulti || shift) {
-        if (!ui.fmulti) { ui.fmulti = true; if (ui.furn) ui.fsel = ['f:' + ui.furn]; ui.furn = null; }
+        if (!ui.fmulti) { ui.fmulti = true; if (ui.furn) ui.fsel = ['f:' + ui.furn]; else if (ui.fcab) ui.fsel = ['c:' + ui.fcab]; ui.furn = null; ui.fcab = null; }
         ui.fsel = ui.fsel.includes(key) ? ui.fsel.filter(k => k !== key) : [...ui.fsel, key]; render();
-      } else if (isCab) { ui.view = 'cab'; ui.cab = id; ui.block = null; render(); }
-      else { ui.furn = ui.furn === id ? null : id; render(); }
+      } else if (isCab) {
+        // 한 번 누르면 고르고, 두 번(빠르게) 누르면 조립 화면을 열어요
+        const now = Date.now(), dbl = ui.lastTap && ui.lastTap.k === key && now - ui.lastTap.t < 450;
+        ui.lastTap = dbl ? null : { k: key, t: now };
+        if (dbl) { openCab(id); return; }
+        ui.fcab = id; ui.furn = null; render();
+      }
+      else { ui.furn = ui.furn === id ? null : id; ui.fcab = null; render(); }
     };
   }
   try { t.setPointerCapture(e.pointerId); } catch (_) {}
@@ -508,6 +520,8 @@ export function installHandlers() {
   // 배치도: 마우스를 올린 보관장·가구를 기억해 두면 Ctrl+C·Delete가 그것을 대상으로 해요
   document.addEventListener('pointerover', e => { const el = e.target.closest && e.target.closest('[data-drag=cab],[data-drag=furn]'); ui.hover = el ? (el.dataset.drag === 'cab' ? 'c:' : 'f:') + el.dataset.id : null; });
   document.addEventListener('click', e => {
+    // 배치도의 빈 바닥을 누르면 고른 것을 풀어요
+    if (e.target.classList && e.target.classList.contains('floor')) { ui.lastTap = null; if (ui.fcab || ui.furn) { ui.fcab = null; ui.furn = null; render(); } return; }
     const t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
     const k = t.dataset.act + ':' + (t.dataset.id || 'x'); if (ui.confirm && ui.confirm !== k) ui.confirm = null;
     const fn = ACT[t.dataset.act]; if (fn) fn(t, e);
@@ -534,6 +548,8 @@ export function installHandlers() {
         toast(`블록은 ${T('cab')} 조립 화면에서 붙여 넣을 수 있어요`); return;
       }
     }
+    if (e.key === 'Enter' && !typing && ready && ui.view === 'room' && ui.fcab && !e.target.closest('button')) { e.preventDefault(); openCab(ui.fcab); return; }
+    if (e.key === 'Escape' && (ui.fcab || ui.furn) && ui.view === 'room' && !ui.fmulti && !ui.fsel.length) { ui.fcab = null; ui.furn = null; ui.lastTap = null; render(); return; }
     // Delete(맥은 Backspace): 배치도는 보관장·가구, 조립 화면은 고른 블록
     if ((e.key === 'Delete' || e.key === 'Backspace') && !typing && ready && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (ui.view === 'room') { e.preventDefault(); ACT.delFloor(); return; }

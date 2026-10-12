@@ -235,5 +235,6 @@ ID는 `uid()`로 만든 영문·숫자 10자. QR 주소는 `사이트주소#b-{b
 - 서버에서 온 내용은 `main.js`의 `mergeColl`과 meta 구독에서 `remember()`만 해요(다른 사람의 변경은 내 단계가 아님).
 - `undo(step?)` / `redo()`는 문서를 통째로 이전·이후 내용으로 되돌리고 저장해요. 토스트의 ‘되돌리기’는 `undoBtn(openStep())`로 그 단계만 되돌려요.
 - 새 조작을 만들 때 따로 할 일은 없어요. 평소처럼 `saveMeta()`/`saveCab()`을 부르면 자동으로 되돌리기가 돼요.
-- 키: 배치도는 마우스를 올린 것(`ui.hover`) 또는 고른 것(`ui.fsel`)에 Ctrl+C·Ctrl+V·Delete(`floorTargets`, `copyFloor`, `ACT.pasteCab`, `ACT.delFloor`), 조립 화면은 고른 블록에 Delete(`ACT.delBlocksKey`). 클립보드 `ui.clip`은 `{type:'blocks', data}` 또는 `{type:'floor', roomId, cabs, furn}`.
+- 배치도에서 보관장을 한 번 누르면 `ui.fcab`(고른 보관장, 위쪽 `.selbar` 막대), 450ms 안에 두 번 누르면 `openCab()`으로 조립 화면. `.selbar`는 늘 같은 높이라 고를 때 배치도가 밀리지 않아요.
+- 키: 배치도는 여러 개 고른 것(`ui.fsel`) → 고른 보관장·가구(`ui.fcab`, `ui.furn`) → 마우스를 올린 것(`ui.hover`) 순서로 Ctrl+C·Ctrl+V·Delete(`floorTargets`, `copyFloor`, `ACT.pasteCab`, `ACT.delFloor`), 조립 화면은 고른 블록에 Delete(`ACT.delBlocksKey`). 클립보드 `ui.clip`은 `{type:'blocks', data}` 또는 `{type:'floor', roomId, cabs, furn}`.
 
