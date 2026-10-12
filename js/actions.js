@@ -237,6 +237,7 @@ const ACT = {
   focusCabName: () => { const n = $('#cab-name'); if (n) { n.focus(); n.select(); } },
   toggleLayoutLock: () => { M().layoutLocked = !M().layoutLocked; saveMeta(); render(); toast(M().layoutLocked ? `배치를 잠갔어요. ${j(T('cab'), '과/와')} 가구를 옮길 수 없어요.` : '배치 잠금을 풀었어요'); },
   cabLock: () => { const c = findCab(ui.cab); c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `배치도에서 이 ${T('cab')} 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
+  cabChips: () => { ui.cabChips = !ui.cabChips; render(); },
   pickCab: t => { ui.cab = t.dataset.id; ui.block = null; ui.multi = false; ui.sel = []; render(); },
   fmultiToggle: () => { ui.fmulti = !ui.fmulti; ui.fsel = ui.fmulti && (ui.furn || ui.fcab) ? [ui.furn ? 'f:' + ui.furn : 'c:' + ui.fcab] : []; ui.furn = null; ui.fcab = null; render(); },
   fmultiDone: () => { ui.fmulti = false; ui.fsel = []; render(); },
@@ -434,6 +435,7 @@ const CH = {
   itExp: itemCh((it, t) => it.expiry = t.value),
   itCat: itemCh((it, t) => it.cat = t.value),
   clipItems: t => { ui.clipItems = t.checked; },
+  pickCabSel: t => { ui.cab = t.value; ui.block = null; ui.multi = false; ui.sel = []; },
   roomCopyItems: t => { ui.roomCopyItems = t.checked; },
   // 크기 칸에 숫자를 직접 적으면, 지금 값과의 차이만큼 −/＋ 단추와 같은 규칙으로 바꿔요
   stepSet: t => { const raw = parseFloat(t.value), v = ['furnSize', 'cabFloor'].includes(t.dataset.a) ? Math.round(raw * 2) / 2 : Math.round(raw), cur = +t.dataset.cur; if (!isFinite(v)) { toast('숫자를 적어 주세요'); return; } if (v === cur) return; ACT[t.dataset.a]({ dataset: { k: t.dataset.k, d: String(v - cur) } }); },

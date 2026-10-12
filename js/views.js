@@ -22,6 +22,7 @@ const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" ar
 const SEL_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
 const ROT_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.5 7A4.5 4.5 0 1 1 9.8 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 1.2l1.3 2.6-2.8.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const PEN_SVG = '<svg class="pen" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9.5 2.2l2.3 2.3-7 7H2.5V9.2l7-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.3 3.4l2.3 2.3" stroke="currentColor" stroke-width="1.5"/></svg>';
+const CHIP_MAX = 8;
 const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 2.5V2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" stroke="currentColor" stroke-width="1.5"/></svg>';
 const PASTE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="3.5" y="3" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 3V2h5v1M7 9.5h4M9 7.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 /* 복사해 둔 것 안내 줄: 블록은 조립 화면에서, 보관장은 배치도와 조립 화면에서 붙여 넣어요 */
@@ -249,7 +250,16 @@ function renderCab() {
   // 칸이 많으면 칸을 조금 더 작게(최소 40px) 그리고, 넘치면 옆으로 밀어서 봐요
   const S2 = ui.S = clamp(Math.floor(avail / cab.cols), Math.max(cab.cols, cab.rows) > 8 ? 40 : 52, 120);
   const shrinkC = cab.blocks.every(b => b.c + b.w <= cab.cols - 1) && cab.cols > 1, shrinkR = cab.blocks.every(b => b.r + b.h <= cab.rows - 1) && cab.rows > 1;
-  let h = `<div class="picker">${list.map(c => `<button class="chip" data-act="pickCab" data-id="${c.id}" aria-pressed="${c.id === cab.id}">${c.locked ? LOCK_SVG : ''}${esc(c.name)}${conflicts(c).length ? '<i class="warnmark">!</i>' : ''}</button>`).join('')}<button class="chip" data-act="addCab">＋ 새 ${T('cab')}</button></div>
+  // 보관장이 많으면(9개부터) 한 줄 드롭다운과 ‹ › 단추로, ‘모두 펼치기’를 누르면 예전처럼 단추로 다 보여요
+  const many = list.length > CHIP_MAX, ci = list.findIndex(c => c.id === cab.id);
+  const chips = `${list.map(c => `<button class="chip" data-act="pickCab" data-id="${c.id}" aria-pressed="${c.id === cab.id}">${c.locked ? LOCK_SVG : ''}${esc(c.name)}${conflicts(c).length ? '<i class="warnmark">!</i>' : ''}</button>`).join('')}<button class="chip" data-act="addCab">＋ 새 ${T('cab')}</button>`;
+  let h = !many ? `<div class="picker">${chips}</div>` : ui.cabChips ? `<div class="picker">${chips}<button class="linkbtn" data-act="cabChips">한 줄로 접기</button></div>`
+    : `<div class="picker one"><span class="pickstep"><button data-act="pickCab" data-id="${list[(ci - 1 + list.length) % list.length].id}" aria-label="앞 ${T('cab')}">‹</button>
+      <select id="cab-pick" class="field" data-ch="pickCabSel" aria-label="${T('cab')} 고르기">${list.map((c, i) => `<option value="${c.id}" ${c.id === cab.id ? 'selected' : ''}>${i + 1}. ${esc(c.name)}${c.locked ? ' 🔒' : ''}${conflicts(c).length ? ' ⚠' : ''}</option>`).join('')}</select>
+      <button data-act="pickCab" data-id="${list[(ci + 1) % list.length].id}" aria-label="다음 ${T('cab')}">›</button></span>
+      <span class="muted">${list.length}개 중 ${ci + 1}번째</span>
+      <button class="chip" data-act="addCab">＋ 새 ${T('cab')}</button><button class="linkbtn" data-act="cabChips">모두 펼치기</button></div>`;
+  h += `
   <div class="cabwrap"><div style="min-width:0">
   <div class="cabhead"><label class="namefield" title="눌러서 이름 고치기"><span class="nl">${T('cab')} 이름</span><input id="cab-name" class="name" data-ch="cabName" value="${esc(cab.name)}" placeholder="이름을 적어 주세요" aria-label="${T('cab')} 이름">${PEN_SVG}</label>
    <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><input class="stepnum" id="cab-cols" type="number" inputmode="decimal" min="1" max="20" step="1" value="${cab.cols}" data-ch="stepSet" data-a="cabSize" data-k="cols" data-cur="${cab.cols}" aria-label="가로 칸 (숫자 입력)"><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= MAX_CELLS ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
