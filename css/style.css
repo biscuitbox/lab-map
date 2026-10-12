@@ -134,8 +134,18 @@ a{color:var(--accent)}
 .cabwrap{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:20px;align-items:start}
 @media (max-width:880px){.cabwrap{grid-template-columns:minmax(0,1fr)}}
 .cabhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:12px}
-.cabhead .name{font-size:18px;font-weight:700;border:1.5px solid transparent;background:transparent;padding:3px 6px;border-radius:6px;min-width:0;width:12em}
-.cabhead .name:hover,.cabhead .name:focus{border-color:var(--line);background:var(--surface);outline:none}
+/* 실험장 이름: 고칠 수 있는 칸이라는 게 보이도록 이름표·테두리·연필 */
+.namefield{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);padding:2px 10px 2px 0;cursor:text;min-width:0;max-width:100%}
+.namefield .nl{align-self:stretch;display:flex;align-items:center;padding:0 9px;font-size:12px;color:var(--muted);background:var(--surface-2);border-right:1.5px solid var(--line);border-radius:6px 0 0 6px;white-space:nowrap}
+.namefield:hover{border-color:var(--accent)}
+.namefield:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.namefield .pen{flex:none;color:var(--muted)}
+.namefield:hover .pen,.namefield:focus-within .pen{color:var(--accent)}
+.cabhead .name{font-size:18px;font-weight:700;border:0;background:transparent;padding:4px 2px;min-width:0;width:12em;outline:none}
+.cabinet .plate{display:block;border:0;background:none;cursor:pointer;margin-inline:auto;padding:0}
+.cabinet .plate .pen{margin-left:5px;vertical-align:-1px;opacity:0;transition:opacity .15s}
+.cabinet .plate:hover .pen,.cabinet .plate:focus-visible .pen{opacity:.8}
+.cabinet .plate:hover{text-decoration:underline dotted;text-underline-offset:4px}
 .stepper{display:inline-flex;align-items:center;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);overflow:hidden}
 .stepper span{padding-inline:8px;font-size:12px;color:var(--muted)}
 .stepper b{min-width:22px;text-align:center;font-family:var(--f-mono);font-weight:500}

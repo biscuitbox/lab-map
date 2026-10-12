@@ -234,6 +234,7 @@ const ACT = {
   fcabCopy: () => { const c = findCab(ui.fcab); if (c) copyFloor([{ k: 'c:' + c.id, o: c, cab: true }]); },
   fcabLock: () => { const c = findCab(ui.fcab); if (!c) return; c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `‘${c.name}’ 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
   fcabClose: () => { ui.fcab = null; render(); },
+  focusCabName: () => { const n = $('#cab-name'); if (n) { n.focus(); n.select(); } },
   toggleLayoutLock: () => { M().layoutLocked = !M().layoutLocked; saveMeta(); render(); toast(M().layoutLocked ? `배치를 잠갔어요. ${j(T('cab'), '과/와')} 가구를 옮길 수 없어요.` : '배치 잠금을 풀었어요'); },
   cabLock: () => { const c = findCab(ui.cab); c.locked = !c.locked; saveCab(c.id); render(); toast(c.locked ? `배치도에서 이 ${T('cab')} 위치를 잠갔어요` : '위치 잠금을 풀었어요'); },
   pickCab: t => { ui.cab = t.dataset.id; ui.block = null; ui.multi = false; ui.sel = []; render(); },

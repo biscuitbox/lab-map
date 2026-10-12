@@ -21,6 +21,7 @@ function labelItems(b, max, tag) {
 const LINK_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M6 8a2.5 2.5 0 0 0 3.5 0l2-2A2.5 2.5 0 0 0 8 2.5l-.8.8M8 6a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 6 11.5l.8-.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 const SEL_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="1.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="7.5" y="7.5" width="5" height="5" rx="1" fill="currentColor"/><rect x="7.5" y="1.5" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>';
 const ROT_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M11.5 7A4.5 4.5 0 1 1 9.8 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M9 1.2l1.3 2.6-2.8.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const PEN_SVG = '<svg class="pen" width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M9.5 2.2l2.3 2.3-7 7H2.5V9.2l7-7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.3 3.4l2.3 2.3" stroke="currentColor" stroke-width="1.5"/></svg>';
 const COPY_SVG = '<svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden="true"><rect x="4.5" y="4.5" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 2.5V2a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h.5" stroke="currentColor" stroke-width="1.5"/></svg>';
 const PASTE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true"><rect x="3.5" y="3" width="11" height="13" rx="1.5" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 3V2h5v1M7 9.5h4M9 7.5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
 /* 복사해 둔 것 안내 줄: 블록은 조립 화면에서, 보관장은 배치도와 조립 화면에서 붙여 넣어요 */
@@ -250,7 +251,7 @@ function renderCab() {
   const shrinkC = cab.blocks.every(b => b.c + b.w <= cab.cols - 1) && cab.cols > 1, shrinkR = cab.blocks.every(b => b.r + b.h <= cab.rows - 1) && cab.rows > 1;
   let h = `<div class="picker">${list.map(c => `<button class="chip" data-act="pickCab" data-id="${c.id}" aria-pressed="${c.id === cab.id}">${c.locked ? LOCK_SVG : ''}${esc(c.name)}${conflicts(c).length ? '<i class="warnmark">!</i>' : ''}</button>`).join('')}<button class="chip" data-act="addCab">＋ 새 ${T('cab')}</button></div>
   <div class="cabwrap"><div style="min-width:0">
-  <div class="cabhead"><input id="cab-name" class="name" data-ch="cabName" value="${esc(cab.name)}" aria-label="${T('cab')} 이름">
+  <div class="cabhead"><label class="namefield" title="눌러서 이름 고치기"><span class="nl">${T('cab')} 이름</span><input id="cab-name" class="name" data-ch="cabName" value="${esc(cab.name)}" placeholder="이름을 적어 주세요" aria-label="${T('cab')} 이름">${PEN_SVG}</label>
    <span class="stepper"><span>가로 칸</span><button data-act="cabSize" data-k="cols" data-d="-1" ${shrinkC ? '' : 'disabled'} aria-label="가로 칸 줄이기">−</button><input class="stepnum" id="cab-cols" type="number" inputmode="decimal" min="1" max="20" step="1" value="${cab.cols}" data-ch="stepSet" data-a="cabSize" data-k="cols" data-cur="${cab.cols}" aria-label="가로 칸 (숫자 입력)"><button data-act="cabSize" data-k="cols" data-d="1" ${cab.cols >= MAX_CELLS ? 'disabled' : ''} aria-label="가로 칸 늘이기">＋</button></span>
    <span class="stepper"><span>세로 칸</span><button data-act="cabSize" data-k="rows" data-d="-1" ${shrinkR ? '' : 'disabled'} aria-label="세로 칸 줄이기">−</button><input class="stepnum" id="cab-rows" type="number" inputmode="decimal" min="1" max="20" step="1" value="${cab.rows}" data-ch="stepSet" data-a="cabSize" data-k="rows" data-cur="${cab.rows}" aria-label="세로 칸 (숫자 입력)"><button data-act="cabSize" data-k="rows" data-d="1" ${cab.rows >= MAX_CELLS ? 'disabled' : ''} aria-label="세로 칸 늘이기">＋</button></span>
    <button class="btn ghost sm" data-act="multiToggle" aria-pressed="${ui.multi}">${SEL_SVG} ${ui.multi ? '고르는 중' : '여러 블록 고르기'}</button>
@@ -262,7 +263,7 @@ function renderCab() {
    <button class="btn ghost sm" data-act="copyCab">${COPY_SVG} ${T('cab')} 복사</button>
    ${confirmBtn('cabDel', cab.id, `${T('cab')} 삭제`, '한 번 더 누르면 삭제')}</div>
   ${clipBar('cab')}${elsewhere(q)}
-  <div class="stage"><div class="cabinet"><div class="plate" style="width:${cab.cols * S2}px" title="${esc(cab.name)}">${esc(cab.name)}</div>
+  <div class="stage"><div class="cabinet"><button type="button" class="plate" data-act="focusCabName" style="width:${cab.cols * S2}px" title="눌러서 이름 고치기">${esc(cab.name)}${PEN_SVG}</button>
    <div class="cab-inner" style="width:${cab.cols * S2}px;height:${cab.rows * S2}px;background-size:100% ${S2}px">`;
   const occ = new Set(); cab.blocks.forEach(b => { for (let r = b.r; r < b.r + b.h; r++) for (let c = b.c; c < b.c + b.w; c++) occ.add(r + ',' + c); });
   for (let r = 0; r < cab.rows; r++) for (let c = 0; c < cab.cols; c++) if (!occ.has(r + ',' + c))
